@@ -447,7 +447,11 @@ function vistaMas(){ return '<div class="tarjeta menu"><a href="#" onclick="irA(
 
 /* — Materiales del cliente — */
 function vistaMateriales(c){
-  const mats=vivos(S.docs,4).sort((a,b)=>a.id.localeCompare(b.id));
+  /* grupos en el orden en que aparecen por id; dentro del grupo por id — así un
+     material nuevo (m13) cae en su grupo y no al final de la lista */
+  const porId=vivos(S.docs,4).sort((a,b)=>a.id.localeCompare(b.id));
+  const orden=[]; porId.forEach(m=>{ if(!orden.includes(m.grupo)) orden.push(m.grupo); });
+  const mats=porId.slice().sort((a,b)=>(orden.indexOf(a.grupo)-orden.indexOf(b.grupo))||a.id.localeCompare(b.id));
   let h='<div class="cifras"><div class="cifra"><b>'+dinero(c.materiales.totalEst)+'</b><span>Estimado</span></div><div class="cifra '+(c.materiales.dif>0.5?'neg':'')+'"><b>'+dinero(c.materiales.totalComprado)+'</b><span>Comprado</span></div></div>', grupo=null;
   mats.forEach(m=>{
     if(m.grupo!==grupo){ if(grupo!==null) h+='</div>'; grupo=m.grupo; h+='<div class="tarjeta"><h2>'+esc(grupo)+'</h2>'; }
