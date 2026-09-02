@@ -276,7 +276,7 @@ function fijarClave(clave){
    5. SINCRONIZACIÓN — servidor PythonAnywhere (misma API del golf)
    POST/GET /api/torneo/<sala>/scores · X-Torneo-Token · {celdas:[...]}
    ============================================================ */
-const estadoSync={ estado:'sin clave', ultimo:0 };
+const estadoSync={ estado:'sin clave', ultimo:0, desfase:0 };
 let syncOcupado=false, syncTimer=null;
 function urlSala(sala){ return SYNC_URL+'/api/torneo/'+sala+'/scores'; }
 async function sync(){
@@ -291,6 +291,13 @@ async function sync(){
     const r=await fetch(urlSala(S.sala), opts);
     if(r.status===401) throw new Error('token');
     if(!r.ok) throw new Error('http '+r.status);
+    /* la fusión gana por sello del teléfono que escribe: un reloj desajustado
+       haría que sus capturas pierdan contra datos viejos. Lo medimos contra la
+       hora del servidor para poder avisarlo. */
+    try{
+      const hd=r.headers&&r.headers.get&&r.headers.get('Date');
+      if(hd){ const srv=Date.parse(hd); if(srv) estadoSync.desfase=srv-Date.now(); }
+    }catch(e){}
     const j=await r.json();
     const celdas=(j&&j.celdas)||[];
     hubo=fusionarCeldas(S.docs, celdas)>0;
@@ -322,6 +329,15 @@ function pintarNav(){
   const base={materiales:'mas',bitacora:'mas',ajustes:'mas'}[S.vista]||S.vista;
   $('nav').innerHTML=VISTAS.map(([id,nom,ic])=>'<a href="#" class="'+(base===id?'on':'')+'" onclick="irA(\''+id+'\');return false"><span>'+ic+'</span>'+nom+'</a>').join('');
 }
+/* más de 2 minutos de diferencia con el servidor: las capturas de este teléfono
+   pueden perder contra las de otro al fusionar */
+function relojDesfasado(){ return Math.abs(estadoSync.desfase)>120000; }
+function textoReloj(){
+  if(!estadoSync.ultimo) return 'sin comprobar';
+  if(!relojDesfasado()) return 'al día';
+  const min=Math.round(Math.abs(estadoSync.desfase)/60000);
+  return 'este teléfono va '+(estadoSync.desfase>0?'atrasado':'adelantado')+' '+min+' min · corrige la hora en Ajustes de iOS para que tus capturas no se pierdan';
+}
 function pintarChip(){
   const el=$('chip'); if(!el||!S) return;
   const e=estadoSync.estado, n=S.cola.length;
@@ -331,6 +347,7 @@ function pintarChip(){
     else if(e==='token'){ txt='○ token rechazado'; cls='malo'; }
     else { txt='○ sin señal'; cls='malo'; }
     if(n) txt+=' · '+n+' por subir';
+    if(relojDesfasado()) { txt+=' · reloj desfasado'; cls='malo'; }
   }
   el.textContent=txt; el.className=cls;
 }
@@ -591,7 +608,8 @@ function vistaAjustes(c){
   const hora=S.ultimaSync?new Date(S.ultimaSync).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}):'';
   return '<div class="tarjeta"><h2>Este teléfono</h2><div class="fila" style="cursor:default"><div class="txt">Yo soy<small>'+esc(S.yo||'—')+'</small></div><button class="btn chico sec" onclick="mostrarClave()">Cambiar</button></div>'
     +'<div class="fila" style="cursor:default"><div class="txt">Clave de la obra<small>sala '+esc((S.sala||'').slice(0,11))+'… · si Denise ve la misma, están conectados</small></div><button class="btn chico sec" onclick="mostrarClave()">Cambiar</button></div>'
-    +'<div class="fila" style="cursor:default"><div class="txt">Sincronización<small>'+esc(estadoSync.estado)+(S.cola.length?' · '+S.cola.length+' por subir':'')+(hora?' · última '+hora:'')+'</small></div><button class="btn chico sec" onclick="sync().then(render)">Sincronizar</button></div></div>'
+    +'<div class="fila" style="cursor:default"><div class="txt">Sincronización<small>'+esc(estadoSync.estado)+(S.cola.length?' · '+S.cola.length+' por subir':'')+(hora?' · última '+hora:'')+'</small></div><button class="btn chico sec" onclick="sync().then(render)">Sincronizar</button></div>'
+    +'<div class="fila" style="cursor:default"><div class="txt'+(relojDesfasado()?' ambar':'')+'">Reloj del teléfono<small>'+esc(textoReloj())+'</small></div></div></div>'
     +'<div class="tarjeta"><h2>Parámetros del contrato</h2>'+campo('anticipoMax','Anticipo máximo %','number',Math.round(c.cfg.anticipoMax*100))+campo('retencion','Retención %','number',Math.round(c.cfg.retencion*100))+campo('contratista','Contratista','text',c.cfg.contratista||'')+campo('pagadores','Quiénes desembolsan (separados por coma)','text',c.pagadores.join(', '))+'<div class="acciones"><button onclick="guardarAjustes()">Guardar parámetros</button></div></div>'
     +'<div class="tarjeta"><h2>Respaldo</h2><div class="acciones"><button class="btn sec" onclick="exportarRespaldo()">Copiar respaldo JSON</button></div></div>'
     +'<div class="vacio">Obra Villa Popolo 17 · versión '+VERSION+'</div>';
@@ -632,7 +650,7 @@ onCambio=render; onSync=pintarChip;
 if(typeof module!=='undefined'){
   module.exports={ sha256, normalizarClave, derivarSala, nuevoId, dinero, fechaCorta, hoyISO, fusionarDoc, fusionarCeldas, celdaDe, vivos, calcular,
     cargar, guardar, escribir, borrar, fijarClave, sync, estadoSync, urlSala,
-    esc, barra, mensajeVacio, vistaResumen, vistaAvance, vistaGastos, vistaPagos, vistaCompras, vistaPendientes, vistaMas, vistaMateriales, vistaBitacora, vistaAjustes };
+    esc, barra, mensajeVacio, relojDesfasado, textoReloj, vistaResumen, vistaAvance, vistaGastos, vistaPagos, vistaCompras, vistaPendientes, vistaMas, vistaMateriales, vistaBitacora, vistaAjustes };
   Object.defineProperty(module.exports,'S',{get:()=>S});
 }else{
   cargar(); if(!S.vista) S.vista='resumen';
@@ -645,7 +663,10 @@ if(typeof module!=='undefined'){
   if(!S.sala||!S.yo) mostrarClave();
   sync();
   setInterval(()=>{ if(!document.hidden) sync(); else pintarChip(); },15000);
-  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) sync(); });
+  /* al volver al frente baja lo nuevo; al salir sube lo que quedó pendiente,
+     para que cerrar la app justo después de capturar no retrase el envío */
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) sync(); else if(S.cola.length) sync(); });
+  window.addEventListener('pagehide',()=>{ if(S.cola.length) sync(); });
   window.addEventListener('online',()=>sync());
 }
 </script>
