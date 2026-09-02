@@ -74,7 +74,8 @@ button:disabled{ opacity:.45; }
 <div id="clave">
   <h2>Clave de la obra</h2>
   <p>Escribe la clave que comparten Paulino y Denise. Con ella este teléfono se conecta a los datos de la obra.</p>
-  <input id="claveInput" type="text" autocomplete="off" autocapitalize="none" autocorrect="off" placeholder="clave">
+  <input id="claveInput" type="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="clave">
+  <p id="claveSala" style="font-size:13px;margin:6px 0 0">&nbsp;</p>
   <label>Yo soy</label>
   <select id="yoInput"><option>Paulino</option><option>Denise</option><option value="otro">Otro…</option></select>
   <input id="yoOtro" type="text" placeholder="Nombre" style="display:none;margin-top:6px">
@@ -317,8 +318,21 @@ function pintarChip(){
 }
 function hoja(titulo, cuerpo){ $('hoja').innerHTML='<h3>'+esc(titulo)+'</h3>'+cuerpo; $('velo').classList.add('on'); }
 function cerrarHoja(){ $('velo').classList.remove('on'); $('hoja').innerHTML=''; }
+/* la sala se deriva de la clave: mostrar su prefijo mientras se escribe permite
+   comparar dos teléfonos ("¿los dos dicen obra-483f16…?") sin revelar la clave */
+function pintarSalaClave(){
+  const el=$('claveSala'); if(!el) return;
+  const v=normalizarClave($('claveInput').value);
+  el.innerHTML=v?'Sala: <b>'+esc(derivarSala(v).slice(0,11))+'…</b> · debe ser la misma en los dos teléfonos':'&nbsp;';
+}
+function mensajeVacio(){
+  const pref=esc((S.sala||'').slice(0,11))+'…';
+  if(estadoSync.estado==='en vivo') return 'Conectado al servidor, pero esta sala está vacía.<br><small>Sala '+pref+'. Si en el otro teléfono la sala es distinta, la clave quedó mal escrita: cámbiala en Más → Ajustes.</small>';
+  if(estadoSync.estado==='token') return 'El servidor rechazó el acceso.<br><small>Avísale a Paulino.</small>';
+  return 'Sin conexión con el servidor todavía.<br><small>Sala '+pref+'. Revisa que el teléfono tenga datos o wifi; la app reintenta sola cada 15 s.</small>';
+}
 function mostrarClave(){
-  $('clave').classList.add('on'); $('claveInput').value=S.clave||'';
+  $('clave').classList.add('on'); $('claveInput').value=S.clave||''; pintarSalaClave();
   const yo=S.yo||'Paulino', sel=$('yoInput');
   if(yo==='Paulino'||yo==='Denise'){ sel.value=yo; $('yoOtro').style.display='none'; }
   else { sel.value='otro'; $('yoOtro').value=yo; $('yoOtro').style.display=''; }
@@ -568,7 +582,7 @@ function render(){
   const vistas={ resumen:vistaResumen, avance:vistaAvance, gastos:vistaGastos, pendientes:vistaPendientes, mas:vistaMas, materiales:vistaMateriales, bitacora:vistaBitacora, ajustes:vistaAjustes };
   let html='';
   if(!S.sala) html='<div class="vacio">Sin clave de la obra.<br><br><button class="btn chico" onclick="mostrarClave()">Escribir clave</button></div>';
-  else if(sinDatos&&S.vista!=='ajustes'&&S.vista!=='mas') html='<div class="vacio">Sala vacía: pide a Claude sembrarla.<br><small>sala '+esc(S.sala.slice(0,11))+'…</small><br><br><button class="btn chico sec" onclick="sync().then(render)">Volver a intentar</button></div>';
+  else if(sinDatos&&S.vista!=='ajustes'&&S.vista!=='mas') html='<div class="vacio">'+mensajeVacio()+'<br><br><button class="btn chico sec" onclick="sync().then(render)">Volver a intentar</button> <button class="btn chico sec" onclick="mostrarClave()">Cambiar clave</button></div>';
   else html=(vistas[S.vista]||vistaResumen)(c);
   $('vista').innerHTML=html;
   pintarNav(); pintarChip();
@@ -581,13 +595,14 @@ onCambio=render; onSync=pintarChip;
 if(typeof module!=='undefined'){
   module.exports={ sha256, normalizarClave, derivarSala, nuevoId, dinero, fechaCorta, hoyISO, fusionarDoc, fusionarCeldas, celdaDe, vivos, calcular,
     cargar, guardar, escribir, borrar, fijarClave, sync, estadoSync, urlSala,
-    esc, barra, vistaResumen, vistaAvance, vistaGastos, vistaPagos, vistaCompras, vistaPendientes, vistaMas, vistaMateriales, vistaBitacora, vistaAjustes };
+    esc, barra, mensajeVacio, vistaResumen, vistaAvance, vistaGastos, vistaPagos, vistaCompras, vistaPendientes, vistaMas, vistaMateriales, vistaBitacora, vistaAjustes };
   Object.defineProperty(module.exports,'S',{get:()=>S});
 }else{
   cargar(); if(!S.vista) S.vista='resumen';
   $('yoInput').addEventListener('change',()=>{ $('yoOtro').style.display=$('yoInput').value==='otro'?'':'none'; });
   $('claveBtn').addEventListener('click',entrarClave);
   $('claveInput').addEventListener('keydown',e=>{ if(e.key==='Enter') entrarClave(); });
+  $('claveInput').addEventListener('input',pintarSalaClave);
   $('velo').addEventListener('click',e=>{ if(e.target.id==='velo') cerrarHoja(); });
   render();
   if(!S.sala||!S.yo) mostrarClave();
