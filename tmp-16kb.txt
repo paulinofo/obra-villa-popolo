@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#5B3A29">
+<title>Obra Villa Popolo 17</title>
+<style>
+:root{ --tierra:#5B3A29; --tierra2:#7A4E36; --crema:#F6F1EA; --papel:#FFFFFF; --tinta:#2B2117; --gris:#7C7268; --linea:#E6DDD2;
+  --ok:#2E7D4F; --rojo:#B3261E; --ambar:#B26A00; --azul:#2F5D8A; --radio:14px; }
+*{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html,body{ margin:0; background:var(--crema); color:var(--tinta); font:16px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+body{ padding-bottom:calc(64px + env(safe-area-inset-bottom)); }
+header{ position:sticky; top:0; z-index:5; background:var(--tierra); color:#fff; padding:calc(10px + env(safe-area-inset-top)) 16px 10px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+header h1{ font-size:17px; margin:0; font-weight:600; letter-spacing:.2px; }
+header small{ display:block; font-size:12px; opacity:.8; font-weight:400; }
+#chip{ font-size:12px; border:1px solid rgba(255,255,255,.55); border-radius:999px; padding:3px 9px; white-space:nowrap; }
+#chip.vivo{ border-color:#9FE3B8; color:#9FE3B8; } #chip.malo{ border-color:#FFB4A9; color:#FFB4A9; }
+main{ padding:14px 14px 20px; max-width:640px; margin:0 auto; }
+.tarjeta{ background:var(--papel); border-radius:var(--radio); padding:14px 16px; margin-bottom:12px; box-shadow:0 1px 2px rgba(0,0,0,.05); }
+.tarjeta h2{ font-size:13px; text-transform:uppercase; letter-spacing:.6px; color:var(--gris); margin:0 0 8px; font-weight:600; }
+.cifras{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+.cifra{ background:var(--papel); border-radius:var(--radio); padding:12px 14px; }
+.cifra b{ display:block; font-size:22px; font-weight:700; letter-spacing:-.3px; font-variant-numeric:tabular-nums; }
+.cifra span{ font-size:12px; color:var(--gris); text-transform:uppercase; letter-spacing:.5px; }
+.cifra.neg b{ color:var(--rojo); } .cifra.pos b{ color:var(--ok); }
+.barra{ height:8px; background:var(--linea); border-radius:999px; overflow:hidden; margin:6px 0; }
+.barra i{ display:block; height:100%; background:var(--ok); border-radius:999px; }
+.etapa,.fila{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 0; border-top:1px solid var(--linea); }
+.etapa:first-of-type,.fila:first-of-type{ border-top:0; }
+.fila{ cursor:pointer; } .txt{ flex:1; min-width:0; } .txt small{ display:block; color:var(--gris); font-size:12px; }
+.num{ text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; } .num small{ display:block; color:var(--gris); font-size:12px; }
+.alerta{ border-radius:10px; padding:10px 12px; margin:6px 0; font-size:14px; }
+.alerta.rojo{ background:#FDE7E5; color:var(--rojo); } .alerta.ambar{ background:#FFF1D6; color:var(--ambar); }
+.pill{ display:inline-block; font-size:11px; font-weight:700; border-radius:6px; padding:2px 6px; letter-spacing:.4px; }
+.pill.ALTA{ background:#FDE7E5; color:var(--rojo); } .pill.MEDIA{ background:#FFF1D6; color:var(--ambar); } .pill.BAJA{ background:#E7EEF6; color:var(--azul); }
+.pill.resuelto{ background:#E3F3E9; color:var(--ok); } .pill.enproceso{ background:#E7EEF6; color:var(--azul); }
+.rojo{ color:var(--rojo); } .ok{ color:var(--ok); } .gris{ color:var(--gris); } .ambar{ color:var(--ambar); }
+.num small.ambar{ color:var(--ambar); }
+button,.btn{ font:inherit; border:0; border-radius:12px; padding:12px 16px; background:var(--tierra); color:#fff; font-weight:600; width:100%; cursor:pointer; }
+.btn.sec{ background:#EFE7DD; color:var(--tierra); } .btn.peligro{ background:#FDE7E5; color:var(--rojo); } .btn.chico{ width:auto; padding:8px 12px; font-size:14px; }
+nav{ position:fixed; left:0; right:0; bottom:0; background:var(--papel); border-top:1px solid var(--linea); display:flex; padding-bottom:env(safe-area-inset-bottom); z-index:5; }
+nav a{ flex:1; text-align:center; padding:8px 0 6px; font-size:11px; color:var(--gris); text-decoration:none; }
+nav a span{ display:block; font-size:20px; line-height:1.1; } nav a.on{ color:var(--tierra); font-weight:700; }
+#velo{ position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:20; display:none; align-items:flex-end; }
+#velo.on{ display:flex; }
+#hoja{ background:var(--papel); width:100%; max-height:92vh; overflow:auto; border-radius:18px 18px 0 0; padding:14px 16px calc(16px + env(safe-area-inset-bottom)); }
+#hoja h3{ margin:0 0 12px; font-size:18px; } #hoja p{ margin:8px 0; font-size:15px; }
+label{ display:block; font-size:12px; color:var(--gris); text-transform:uppercase; letter-spacing:.5px; margin:10px 0 4px; }
+input,select,textarea{ font:inherit; width:100%; padding:11px 12px; border:1px solid var(--linea); border-radius:10px; background:#FBF8F4; color:var(--tinta); }
+textarea{ min-height:70px; resize:vertical; }
+.acciones{ display:flex; gap:10px; margin-top:16px; } .acciones button{ flex:1; }
+button:disabled{ opacity:.45; }
+.vacio{ text-align:center; color:var(--gris); padding:30px 10px; }
+#clave{ position:fixed; inset:0; background:var(--crema); z-index:30; display:none; padding:60px 24px; overflow:auto; }
+#clave.on{ display:block; } #clave h2{ margin:0 0 6px; } #clave p{ color:var(--gris); }
+.menu a{ display:flex; justify-content:space-between; padding:14px 4px; border-top:1px solid var(--linea); color:var(--tinta); text-decoration:none; font-size:16px; }
+.menu a:first-child{ border-top:0; }
+.seg{ display:flex; background:#EFE7DD; border-radius:12px; padding:4px; margin-bottom:12px; }
+.seg a{ flex:1; text-align:center; padding:8px 4px; border-radius:9px; color:var(--tierra); text-decoration:none; font-weight:600; font-size:14px; }
+.seg a small{ display:block; font-weight:400; font-size:12px; color:var(--gris); }
+.seg a.on{ background:var(--papel); box-shadow:0 1px 2px rgba(0,0,0,.08); }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="titulo">Villa Popolo 17<small id="subtitulo">Seguimiento de obra</small></h1>
+  <div id="chip">○ sin clave</div>
+</header>
+<main id="vista"></main>
+<nav id="nav"></nav>
+<div id="velo"><div id="hoja"></div></div>
+<div id="clave">
+  <h2>Clave de la obra</h2>
+  <p>Escribe la clave que comparten Paulino y Denise. Con ella este teléfono se conecta a los datos de la obra.</p>
+  <input id="claveInput" type="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="clave">
+  <p id="claveSala" style="font-size:13px;margin:6px 0 0">&nbsp;</p>
+  <label>Yo soy</label>
+  <select id="yoInput"><option>Paulino</option><option>Denise</option><option value="otro">Otro…</option></select>
+  <input id="yoOtro" type="text" placeholder="Nombre" style="display:none;margin-top:6px">
+  <div class="acciones"><button id="claveBtn">Entrar</button></div>
+</div>
+<script>
+/* ============================================================
+   1. CONSTANTES
+   ============================================================ */
+const VERSION = 3;
+const LLAVE_LS = 'obra-vp17';
+const SYNC_URL = 'https://paulinofo.pythonanywhere.com';
+const SYNC_TOKEN = '9eb0b306ada4cdd025982f97f18c0da3';
+const SEMILLA_TS = 1756684800000;
+/* d: 0 config · 1 rubros · 2 avances · 3 pagos (al contratista) · 4 materiales (lista estimada)
+   · 5 pendientes · 6 bitacora · 7 compras (gastos de materiales, con ticket) */
+const COLECCIONES = ['config','rubros','avances','pagos','materiales','pendientes','bitacora','compras'];
+const PREFIJOS = { avances:'a', pagos:'p', materiales:'m', pendientes:'q', bitacora:'b', compras:'c' };
+
+/* ============================================================
+   2. UTILIDADES PURAS
+   ============================================================ */
+function utf8(str){ return unescape(encodeURIComponent(str)); }
+function sha256(str){
+  const K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+  let H=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+  const s=utf8(str), l=s.length, nb=((l+8)>>6)+1, w=new Array(nb*16).fill(0);
+  for(let i=0;i<l;i++) w[i>>2]|=s.charCodeAt(i)<<(24-(i%4)*8);
+  w[l>>2]|=0x80<<(24-(l%4)*8);
+  w[nb*16-1]=l*8;
+  const rotr=(x,n)=>(x>>>n)|(x<<(32-n));
+  for(let b=0;b<w.length;b+=16){
+    const W=new Array(64);
+    for(let t=0;t<16;t++) W[t]=w[b+t]|0;
+    for(let t=16;t<64;t++){
+      const s0=rotr(W[t-15],7)^rotr(W[t-15],18)^(W[t-15]>>>3);
+      const s1=rotr(W[t-2],17)^rotr(W[t-2],19)^(W[t-2]>>>10);
+      W[t]=(W[t-16]+s0+W[t-7]+s1)|0;
+    }
+    let [a,b2,c,d,e,f,g,h]=H;
+    for(let t=0;t<64;t++){
+      const S1=rotr(e,6)^rotr(e,11)^rotr(e,25), ch=(e&f)^(~e&g);
+      const t1=(h+S1+ch+K[t]+W[t])|0;
+      const S0=rotr(a,2)^rotr(a,13)^rotr(a,22), maj=(a&b2)^(a&c)^(b2&c);
+      const t2=(S0+maj)|0;
+      h=g; g=f; f=e; e=(d+t1)|0; d=c; c=b2; b2=a; a=(t1+t2)|0;
+    }
+    H=[(H[0]+a)|0,(H[1]+b2)|0,(H[2]+c)|0,(H[3]+d)|0,(H[4]+e)|0,(H[5]+f)|0,(H[6]+g)|0,(H[7]+h)|0];
+  }
+  return H.map(x=>(x>>>0).toString(16).padStart(8,'0')).join('');
+}
+function normalizarClave(c){ return String(c||'').trim().toLowerCase(); }
+function derivarSala(clave){ return 'obra-'+sha256(normalizarClave(clave)).slice(0,24); }
+function nuevoId(prefijo, ahora, azar){
+  const t=(ahora===undefined?Date.now():ahora).toString(36);
+  const r=Math.floor((azar===undefined?Math.random():azar)*1296).toString(36).padStart(2,'0');
+  return (prefijo+t+r).slice(0,16);
+}
+const FMT_MX=new Intl.NumberFormat('es-MX',{maximumFractionDigits:0});
+function dinero(n){ const v=Math.round(+n||0); return (v<0?'-$':'$')+FMT_MX.format(Math.abs(v)); }
+const MESES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+function fechaCorta(iso){ if(!iso) return ''; const p=String(iso).split('-'); return (+p[2])+' '+(MESES[+p[1]-1]||''); }
+function hoyISO(d){ d=d||new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+/* ============================================================
+   3. ESTADO Y FUSIÓN
+   docs = { '0':{cfg:{...}}, '1':{r01:{...}}, ... } — por id gana t mayor
+   ============================================================ */
+function fusionarDoc(docs, d, doc){
+  if(!doc||typeof doc!=='object'||!doc.id||typeof doc.t!=='number') return false;
+  const col=docs[String(d)]||(docs[String(d)]={});
+  const act=col[doc.id];
+  if(act&&act.t>=doc.t) return false;
+  col[doc.id]=doc; return true;
+}
+function fusionarCeldas(docs, celdas){
+  let n=0;
+  (celdas||[]).forEach(c=>{
+    if(!c||typeof c.d!=='number'||c.d<0||c.d>=COLECCIONES.length) return;
+    if(fusionarDoc(docs,c.d,c.v)) n++;
+  });
+  return n;
+}
+function celdaDe(d, doc){ return {d:+d, jid:doc.id, h:0, v:doc, t:doc.t}; }
+function vivos(docs, d){ return Object.values(docs[String(d)]||{}).filter(x=>!x.del); }
+
+/* ============================================================
+   4. MOTOR DE CÁLCULO (funciones puras sobre docs)
+   ============================================================ */
+const CFG_DEFAULT={ id:'cfg', t:0, nombre:'Villa Popolo 17', contratista:'', anticipoMax:0.3, retencion:0.1, version:1 };
+/* quién pone el dinero de cada gasto (campo 'paga' en pagos y compras) */
+const PAGADORES_DEFAULT=['Denise','Dorila'];
+const SIN_ASIGNAR='Sin asignar';
+function calcular(docs){
+  const cfg=Object.assign({}, CFG_DEFAULT, (docs['0']||{}).cfg||{});
+  const rubrosBase=vivos(docs,1).sort((a,b)=>(a.orden||0)-(b.orden||0));
+  const avances=vivos(docs,2), pagos=vivos(docs,3), mats=vivos(docs,4);
+  const rubros=rubrosBase.map(r=>{
+    const ejecutado=avances.filter(a=>a.rubro===r.id).reduce((s,a)=>s+(+a.cantidad||0),0);
+    const pct=r.cant>0?Math.min(1,ejecutado/r.cant):0;
+    const devengado=Math.min(ejecutado,+r.cant||0)*((+r.moU||0)+(+r.matU||0));
+    const pagado=pagos.filter(p=>p.rubro===r.id).reduce((s,p)=>s+(+p.monto||0),0);
+    return Object.assign({},r,{ importe:(+r.cant||0)*((+r.moU||0)+(+r.matU||0)), ejecutado, pct, devengado, pagado, porPagar:devengado-pagado, adelantado:pagado>devengado+0.005 });
+  });
+  const contrato=rubros.reduce((s,r)=>s+r.importe,0);
+  const devengado=rubros.reduce((s,r)=>s+r.devengado,0);
+  const pagado=pagos.reduce((s,p)=>s+(+p.monto||0),0);
+  const anticipoPagado=pagos.filter(p=>p.rubro==='anticipo').reduce((s,p)=>s+(+p.monto||0),0);
+  const porPagar=devengado-pagado;
+  const etapas=[];
+  rubros.forEach(r=>{
+    let e=etapas.find(x=>x.etapa===r.etapa);
+    if(!e){ e={etapa:r.etapa,contrato:0,devengado:0,pct:0}; etapas.push(e); }
+    e.contrato+=r.importe; e.devengado+=r.devengado;
+  });
+  etapas.forEach(e=>{ e.pct=e.contrato>0?e.devengado/e.contrato:0; });
+  const retencion=cfg.retencion*devengado;
+  const pagoSugerido=Math.max(0, devengado*(1-cfg.retencion)-pagado);
+  const alertas=[];
+  if(pagado>devengado+0.005) alertas.push({nivel:'rojo', texto:'Pagaste por adelantado '+dinero(pagado-devengado)+': hay más dinero entregado que obra ejecutada.'});
+  if(anticipoPagado>cfg.anticipoMax*contrato+0.005) alertas.push({nivel:'rojo', texto:'El anticipo supera el '+Math.round(cfg.anticipoMax*100)+'% del contrato ('+dinero(anticipoPagado)+' de '+dinero(cfg.anticipoMax*contrato)+' máximo).'});
+  rubros.filter(r=>r.adelantado).forEach(r=>alertas.push({nivel:'ambar', texto:'Rubro '+r.n+' ('+r.nombre+'): pagado '+dinero(r.pagado)+' contra '+dinero(r.devengado)+' ejecutado.'}));
+  /* compras de materiales (gasto real, con ticket); cada una puede ligarse a un
+     material de la lista estimada para comparar estimado vs comprado */
+  const compras=vivos(docs,7).sort((a,b)=>(b.fecha>a.fecha?1:b.fecha<a.fecha?-1:b.t-a.t));
+  const porMaterial={};
+  mats.forEach(m=>{ porMaterial[m.id]=+m.comprado||0; });          // 'comprado' manual (heredado)
+  compras.forEach(k=>{ if(k.material) porMaterial[k.material]=(porMaterial[k.material]||0)+(+k.monto||0); });
+  const totalEst=mats.reduce((s,m)=>s+(+m.cant||0)*(+m.puEst||0),0);
+  const totalComprado=mats.reduce((s,m)=>s+(+m.comprado||0),0)+compras.reduce((s,k)=>s+(+k.monto||0),0);
+  const gastoMO=pagado, gastoTotal=pagado+totalComprado;
+  /* bolsas: cuánto ha puesto cada quien, separando mano de obra de materiales */
+  const pagadores=(Array.isArray(cfg.pagadores)&&cfg.pagadores.length?cfg.pagadores:PAGADORES_DEFAULT).slice();
+  const bolsas={};
+  const anota=(quien,campo,monto)=>{
+    const k=String(quien||'').trim()||SIN_ASIGNAR;
+    const o=bolsas[k]||(bolsas[k]={nombre:k,mo:0,materiales:0,total:0});
+    o[campo]+=monto; o.total+=monto;
+  };
+  pagos.forEach(p=>anota(p.paga,'mo',+p.monto||0));
+  compras.forEach(k=>anota(k.paga,'materiales',+k.monto||0));
+  const desembolsos=Object.values(bolsas).sort((a,b)=>((a.nombre===SIN_ASIGNAR)-(b.nombre===SIN_ASIGNAR))||(b.total-a.total));
+  const sinAsignar=(bolsas[SIN_ASIGNAR]||{total:0}).total;
+  if(sinAsignar>0.005) alertas.push({nivel:'ambar', texto:'Hay '+dinero(sinAsignar)+' sin saber quién los desembolsó: ábrelos en Gastos y elige Denise o Dorila.'});
+  const nombreRubro=id=>{ const r=rubros.find(x=>x.id===id); return r?r.nombre:(id==='anticipo'?'Anticipo':'Otro'); };
+  const movimientos=[]
+    .concat(avances.map(a=>({tipo:'avance', fecha:a.fecha, t:a.t, por:a.por||'', texto:(
