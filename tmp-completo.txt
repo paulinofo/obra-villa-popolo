@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#5B3A29">
+<title>Obra Villa Popolo 17</title>
+<style>
+:root{ --tierra:#5B3A29; --tierra2:#7A4E36; --crema:#F6F1EA; --papel:#FFFFFF; --tinta:#2B2117; --gris:#7C7268; --linea:#E6DDD2;
+  --ok:#2E7D4F; --rojo:#B3261E; --ambar:#B26A00; --azul:#2F5D8A; --radio:14px; }
+*{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html,body{ margin:0; background:var(--crema); color:var(--tinta); font:16px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+body{ padding-bottom:calc(64px + env(safe-area-inset-bottom)); }
+header{ position:sticky; top:0; z-index:5; background:var(--tierra); color:#fff; padding:calc(10px + env(safe-area-inset-top)) 16px 10px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+header h1{ font-size:17px; margin:0; font-weight:600; letter-spacing:.2px; }
+header small{ display:block; font-size:12px; opacity:.8; font-weight:400; }
+#chip{ font-size:12px; border:1px solid rgba(255,255,255,.55); border-radius:999px; padding:3px 9px; white-space:nowrap; }
+#chip.vivo{ border-color:#9FE3B8; color:#9FE3B8; } #chip.malo{ border-color:#FFB4A9; color:#FFB4A9; }
+main{ padding:14px 14px 20px; max-width:640px; margin:0 auto; }
+.tarjeta{ background:var(--papel); border-radius:var(--radio); padding:14px 16px; margin-bottom:12px; box-shadow:0 1px 2px rgba(0,0,0,.05); }
+.tarjeta h2{ font-size:13px; text-transform:uppercase; letter-spacing:.6px; color:var(--gris); margin:0 0 8px; font-weight:600; }
+.cifras{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+.cifra{ background:var(--papel); border-radius:var(--radio); padding:12px 14px; }
+.cifra b{ display:block; font-size:22px; font-weight:700; letter-spacing:-.3px; font-variant-numeric:tabular-nums; }
+.cifra span{ font-size:12px; color:var(--gris); text-transform:uppercase; letter-spacing:.5px; }
+.cifra.neg b{ color:var(--rojo); } .cifra.pos b{ color:var(--ok); }
+.barra{ height:8px; background:var(--linea); border-radius:999px; overflow:hidden; margin:6px 0; }
+.barra i{ display:block; height:100%; background:var(--ok); border-radius:999px; }
+.etapa,.fila{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 0; border-top:1px solid var(--linea); }
+.etapa:first-of-type,.fila:first-of-type{ border-top:0; }
+.fila{ cursor:pointer; } .txt{ flex:1; min-width:0; } .txt small{ display:block; color:var(--gris); font-size:12px; }
+.num{ text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; } .num small{ display:block; color:var(--gris); font-size:12px; }
+.alerta{ border-radius:10px; padding:10px 12px; margin:6px 0; font-size:14px; }
+.alerta.rojo{ background:#FDE7E5; color:var(--rojo); } .alerta.ambar{ background:#FFF1D6; color:var(--ambar); }
+.pill{ display:inline-block; font-size:11px; font-weight:700; border-radius:6px; padding:2px 6px; letter-spacing:.4px; }
+.pill.ALTA{ background:#FDE7E5; color:var(--rojo); } .pill.MEDIA{ background:#FFF1D6; color:var(--ambar); } .pill.BAJA{ background:#E7EEF6; color:var(--azul); }
+.pill.resuelto{ background:#E3F3E9; color:var(--ok); } .pill.enproceso{ background:#E7EEF6; color:var(--azul); }
+.rojo{ color:var(--rojo); } .ok{ color:var(--ok); } .gris{ color:var(--gris); } .ambar{ color:var(--ambar); }
+.num small.ambar{ color:var(--ambar); }
+button,.btn{ font:inherit; border:0; border-radius:12px; padding:12px 16px; background:var(--tierra); color:#fff; font-weight:600; width:100%; cursor:pointer; }
+.btn.sec{ background:#EFE7DD; color:var(--tierra); } .btn.peligro{ background:#FDE7E5; color:var(--rojo); } .btn.chico{ width:auto; padding:8px 12px; font-size:14px; }
+nav{ position:fixed; left:0; right:0; bottom:0; background:var(--papel); border-top:1px solid var(--linea); display:flex; padding-bottom:env(safe-area-inset-bottom); z-index:5; }
+nav a{ flex:1; text-align:center; padding:8px 0 6px; font-size:11px; color:var(--gris); text-decoration:none; }
+nav a span{ display:block; font-size:20px; line-height:1.1; } nav a.on{ color:var(--tierra); font-weight:700; }
+#velo{ position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:20; display:none; align-items:flex-end; }
+#velo.on{ display:flex; }
+#hoja{ background:var(--papel); width:100%; max-height:92vh; overflow:auto; border-radius:18px 18px 0 0; padding:14px 16px calc(16px + env(safe-area-inset-bottom)); }
+#hoja h3{ margin:0 0 12px; font-size:18px; } #hoja p{ margin:8px 0; font-size:15px; }
+label{ display:block; font-size:12px; color:var(--gris); text-transform:uppercase; letter-spacing:.5px; margin:10px 0 4px; }
+input,select,textarea{ font:inherit; width:100%; padding:11px 12px; border:1px solid var(--linea); border-radius:10px; background:#FBF8F4; color:var(--tinta); }
+textarea{ min-height:70px; resize:vertical; }
+.acciones{ display:flex; gap:10px; margin-top:16px; } .acciones button{ flex:1; }
+button:disabled{ opacity:.45; }
+.vacio{ text-align:center; color:var(--gris); padding:30px 10px; }
+#clave{ position:fixed; inset:0; background:var(--crema); z-index:30; display:none; padding:60px 24px; overflow:auto; }
+#clave.on{ display:block; } #clave h2{ margin:0 0 6px; } #clave p{ color:var(--gris); }
+.menu a{ display:flex; justify-content:space-between; padding:14px 4px; border-top:1px solid var(--linea); color:var(--tinta); text-decoration:none; font-size:16px; }
+.menu a:first-child{ border-top:0; }
+.seg{ display:flex; background:#EFE7DD; border-radius:12px; padding:4px; margin-bottom:12px; }
+.seg a{ flex:1; text-align:center; padding:8px 4px; border-radius:9px; color:var(--tierra); text-decoration:none; font-weight:600; font-size:14px; }
+.seg a small{ display:block; font-weight:400; font-size:12px; color:var(--gris); }
+.seg a.on{ background:var(--papel); box-shadow:0 1px 2px rgba(0,0,0,.08); }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="titulo">Villa Popolo 17<small id="subtitulo">Seguimiento de obra</small></h1>
+  <div id="chip">○ sin clave</div>
+</header>
+<main id="vista"></main>
+<nav id="nav"></nav>
+<div id="velo"><div id="hoja"></div></div>
+<div id="clave">
+  <h2>Clave de la obra</h2>
+  <p>Escribe la clave que comparten Paulino y Denise. Con ella este teléfono se conecta a los datos de la obra.</p>
+  <input id="claveInput" type="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="clave">
+  <p id="claveSala" style="font-size:13px;margin:6px 0 0">&nbsp;</p>
+  <label>Yo soy</label>
+  <select id="yoInput"><option>Paulino</option><option>Denise</option><option value="otro">Otro…</option></select>
+  <input id="yoOtro" type="text" placeholder="Nombre" style="display:none;margin-top:6px">
+  <div class="acciones"><button id="claveBtn">Entrar</button></div>
+</div>
+<script>
+/* ============================================================
+   1. CONSTANTES
+   ============================================================ */
+const VERSION = 3;
+const LLAVE_LS = 'obra-vp17';
+const SYNC_URL = 'https://paulinofo.pythonanywhere.com';
+const SYNC_TOKEN = '9eb0b306ada4cdd025982f97f18c0da3';
+const SEMILLA_TS = 1756684800000;
+/* d: 0 config · 1 rubros · 2 avances · 3 pagos (al contratista) · 4 materiales (lista estimada)
+   · 5 pendientes · 6 bitacora · 7 compras (gastos de materiales, con ticket) */
+const COLECCIONES = ['config','rubros','avances','pagos','materiales','pendientes','bitacora','compras'];
+const PREFIJOS = { avances:'a', pagos:'p', materiales:'m', pendientes:'q', bitacora:'b', compras:'c' };
+
+/* ============================================================
+   2. UTILIDADES PURAS
+   ============================================================ */
+function utf8(str){ return unescape(encodeURIComponent(str)); }
+function sha256(str){
+  const K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+  let H=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+  const s=utf8(str), l=s.length, nb=((l+8)>>6)+1, w=new Array(nb*16).fill(0);
+  for(let i=0;i<l;i++) w[i>>2]|=s.charCodeAt(i)<<(24-(i%4)*8);
+  w[l>>2]|=0x80<<(24-(l%4)*8);
+  w[nb*16-1]=l*8;
+  const rotr=(x,n)=>(x>>>n)|(x<<(32-n));
+  for(let b=0;b<w.length;b+=16){
+    const W=new Array(64);
+    for(let t=0;t<16;t++) W[t]=w[b+t]|0;
+    for(let t=16;t<64;t++){
+      const s0=rotr(W[t-15],7)^rotr(W[t-15],18)^(W[t-15]>>>3);
+      const s1=rotr(W[t-2],17)^rotr(W[t-2],19)^(W[t-2]>>>10);
+      W[t]=(W[t-16]+s0+W[t-7]+s1)|0;
+    }
+    let [a,b2,c,d,e,f,g,h]=H;
+    for(let t=0;t<64;t++){
+      const S1=rotr(e,6)^rotr(e,11)^rotr(e,25), ch=(e&f)^(~e&g);
+      const t1=(h+S1+ch+K[t]+W[t])|0;
+      const S0=rotr(a,2)^rotr(a,13)^rotr(a,22), maj=(a&b2)^(a&c)^(b2&c);
+      const t2=(S0+maj)|0;
+      h=g; g=f; f=e; e=(d+t1)|0; d=c; c=b2; b2=a; a=(t1+t2)|0;
+    }
+    H=[(H[0]+a)|0,(H[1]+b2)|0,(H[2]+c)|0,(H[3]+d)|0,(H[4]+e)|0,(H[5]+f)|0,(H[6]+g)|0,(H[7]+h)|0];
+  }
+  return H.map(x=>(x>>>0).toString(16).padStart(8,'0')).join('');
+}
+function normalizarClave(c){ return String(c||'').trim().toLowerCase(); }
+function derivarSala(clave){ return 'obra-'+sha256(normalizarClave(clave)).slice(0,24); }
+function nuevoId(prefijo, ahora, azar){
+  const t=(ahora===undefined?Date.now():ahora).toString(36);
+  const r=Math.floor((azar===undefined?Math.random():azar)*1296).toString(36).padStart(2,'0');
+  return (prefijo+t+r).slice(0,16);
+}
+const FMT_MX=new Intl.NumberFormat('es-MX',{maximumFractionDigits:0});
+function dinero(n){ const v=Math.round(+n||0); return (v<0?'-$':'$')+FMT_MX.format(Math.abs(v)); }
+const MESES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+function fechaCorta(iso){ if(!iso) return ''; const p=String(iso).split('-'); return (+p[2])+' '+(MESES[+p[1]-1]||''); }
+function hoyISO(d){ d=d||new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+/* ============================================================
+   3. ESTADO Y FUSIÓN
+   docs = { '0':{cfg:{...}}, '1':{r01:{...}}, ... } — por id gana t mayor
+   ============================================================ */
+function fusionarDoc(docs, d, doc){
+  if(!doc||typeof doc!=='object'||!doc.id||typeof doc.t!=='number') return false;
+  const col=docs[String(d)]||(docs[String(d)]={});
+  const act=col[doc.id];
+  if(act&&act.t>=doc.t) return false;
+  col[doc.id]=doc; return true;
+}
+function fusionarCeldas(docs, celdas){
+  let n=0;
+  (celdas||[]).forEach(c=>{
+    if(!c||typeof c.d!=='number'||c.d<0||c.d>=COLECCIONES.length) return;
+    if(fusionarDoc(docs,c.d,c.v)) n++;
+  });
+  return n;
+}
+function celdaDe(d, doc){ return {d:+d, jid:doc.id, h:0, v:doc, t:doc.t}; }
+function vivos(docs, d){ return Object.values(docs[String(d)]||{}).filter(x=>!x.del); }
+
+/* ============================================================
+   4. MOTOR DE CÁLCULO (funciones puras sobre docs)
+   ============================================================ */
+const CFG_DEFAULT={ id:'cfg', t:0, nombre:'Villa Popolo 17', contratista:'', anticipoMax:0.3, retencion:0.1, version:1 };
+/* quién pone el dinero de cada gasto (campo 'paga' en pagos y compras) */
+const PAGADORES_DEFAULT=['Denise','Dorila'];
+const SIN_ASIGNAR='Sin asignar';
+function calcular(docs){
+  const cfg=Object.assign({}, CFG_DEFAULT, (docs['0']||{}).cfg||{});
+  const rubrosBase=vivos(docs,1).sort((a,b)=>(a.orden||0)-(b.orden||0));
+  const avances=vivos(docs,2), pagos=vivos(docs,3), mats=vivos(docs,4);
+  const rubros=rubrosBase.map(r=>{
+    const ejecutado=avances.filter(a=>a.rubro===r.id).reduce((s,a)=>s+(+a.cantidad||0),0);
+    const pct=r.cant>0?Math.min(1,ejecutado/r.cant):0;
+    const devengado=Math.min(ejecutado,+r.cant||0)*((+r.moU||0)+(+r.matU||0));
+    const pagado=pagos.filter(p=>p.rubro===r.id).reduce((s,p)=>s+(+p.monto||0),0);
+    return Object.assign({},r,{ importe:(+r.cant||0)*((+r.moU||0)+(+r.matU||0)), ejecutado, pct, devengado, pagado, porPagar:devengado-pagado, adelantado:pagado>devengado+0.005 });
+  });
+  const contrato=rubros.reduce((s,r)=>s+r.importe,0);
+  const devengado=rubros.reduce((s,r)=>s+r.devengado,0);
+  const pagado=pagos.reduce((s,p)=>s+(+p.monto||0),0);
+  const anticipoPagado=pagos.filter(p=>p.rubro==='anticipo').reduce((s,p)=>s+(+p.monto||0),0);
+  const porPagar=devengado-pagado;
+  const etapas=[];
+  rubros.forEach(r=>{
+    let e=etapas.find(x=>x.etapa===r.etapa);
+    if(!e){ e={etapa:r.etapa,contrato:0,devengado:0,pct:0}; etapas.push(e); }
+    e.contrato+=r.importe; e.devengado+=r.devengado;
+  });
+  etapas.forEach(e=>{ e.pct=e.contrato>0?e.devengado/e.contrato:0; });
+  const retencion=cfg.retencion*devengado;
+  const pagoSugerido=Math.max(0, devengado*(1-cfg.retencion)-pagado);
+  const alertas=[];
+  if(pagado>devengado+0.005) alertas.push({nivel:'rojo', texto:'Pagaste por adelantado '+dinero(pagado-devengado)+': hay más dinero entregado que obra ejecutada.'});
+  if(anticipoPagado>cfg.anticipoMax*contrato+0.005) alertas.push({nivel:'rojo', texto:'El anticipo supera el '+Math.round(cfg.anticipoMax*100)+'% del contrato ('+dinero(anticipoPagado)+' de '+dinero(cfg.anticipoMax*contrato)+' máximo).'});
+  rubros.filter(r=>r.adelantado).forEach(r=>alertas.push({nivel:'ambar', texto:'Rubro '+r.n+' ('+r.nombre+'): pagado '+dinero(r.pagado)+' contra '+dinero(r.devengado)+' ejecutado.'}));
+  /* compras de materiales (gasto real, con ticket); cada una puede ligarse a un
+     material de la lista estimada para comparar estimado vs comprado */
+  const compras=vivos(docs,7).sort((a,b)=>(b.fecha>a.fecha?1:b.fecha<a.fecha?-1:b.t-a.t));
+  const porMaterial={};
+  mats.forEach(m=>{ porMaterial[m.id]=+m.comprado||0; });          // 'comprado' manual (heredado)
+  compras.forEach(k=>{ if(k.material) porMaterial[k.material]=(porMaterial[k.material]||0)+(+k.monto||0); });
+  const totalEst=mats.reduce((s,m)=>s+(+m.cant||0)*(+m.puEst||0),0);
+  const totalComprado=mats.reduce((s,m)=>s+(+m.comprado||0),0)+compras.reduce((s,k)=>s+(+k.monto||0),0);
+  const gastoMO=pagado, gastoTotal=pagado+totalComprado;
+  /* bolsas: cuánto ha puesto cada quien, separando mano de obra de materiales */
+  const pagadores=(Array.isArray(cfg.pagadores)&&cfg.pagadores.length?cfg.pagadores:PAGADORES_DEFAULT).slice();
+  const bolsas={};
+  const anota=(quien,campo,monto)=>{
+    const k=String(quien||'').trim()||SIN_ASIGNAR;
+    const o=bolsas[k]||(bolsas[k]={nombre:k,mo:0,materiales:0,total:0});
+    o[campo]+=monto; o.total+=monto;
+  };
+  pagos.forEach(p=>anota(p.paga,'mo',+p.monto||0));
+  compras.forEach(k=>anota(k.paga,'materiales',+k.monto||0));
+  const desembolsos=Object.values(bolsas).sort((a,b)=>((a.nombre===SIN_ASIGNAR)-(b.nombre===SIN_ASIGNAR))||(b.total-a.total));
+  const sinAsignar=(bolsas[SIN_ASIGNAR]||{total:0}).total;
+  if(sinAsignar>0.005) alertas.push({nivel:'ambar', texto:'Hay '+dinero(sinAsignar)+' sin saber quién los desembolsó: ábrelos en Gastos y elige Denise o Dorila.'});
+  const nombreRubro=id=>{ const r=rubros.find(x=>x.id===id); return r?r.nombre:(id==='anticipo'?'Anticipo':'Otro'); };
+  const movimientos=[]
+    .concat(avances.map(a=>({tipo:'avance', fecha:a.fecha, t:a.t, por:a.por||'', texto:(+a.cantidad)+' '+((rubros.find(r=>r.id===a.rubro)||{}).unidad||'')+' · '+nombreRubro(a.rubro)})))
+    .concat(pagos.map(p=>({tipo:'pago', fecha:p.fecha, t:p.t, por:p.por||'', texto:dinero(p.monto)+' · '+(p.concepto||nombreRubro(p.rubro))})))
+    .concat(compras.map(k=>({tipo:'compra', fecha:k.fecha, t:k.t, por:k.por||'', texto:dinero(k.monto)+' · '+(k.concepto||k.proveedor||'compra')})))
+    .sort((a,b)=>b.t-a.t);
+  return { cfg, rubros, etapas, contrato, devengado, pagado, porPagar, avance:contrato>0?devengado/contrato:0,
+           anticipoPagado, retencion, pagoSugerido, alertas,
+           materiales:{totalEst,totalComprado,dif:totalComprado-totalEst,porMaterial}, compras, gastoMO, gastoTotal,
+           pagadores, desembolsos, sinAsignar, movimientos };
+}
+
+/* ============================================================
+   3b. ESTADO GLOBAL DEL TELÉFONO
+   ============================================================ */
+let S=null;
+let onCambio=()=>{}, onSync=()=>{};
+function estadoVacio(){ return { clave:'', sala:'', yo:'', vista:'resumen', docs:{}, cola:[], ultimaSync:0, version:VERSION }; }
+function cargar(){
+  let g=null;
+  try{ g=JSON.parse(localStorage.getItem(LLAVE_LS)||'null'); }catch(e){ g=null; }
+  S=Object.assign(estadoVacio(), g||{});
+  if(!S.docs||typeof S.docs!=='object') S.docs={};
+  if(!Array.isArray(S.cola)) S.cola=[];
+  if(S.clave&&!S.sala) S.sala=derivarSala(S.clave);
+  return S;
+}
+function guardar(){ try{ localStorage.setItem(LLAVE_LS, JSON.stringify(S)); }catch(e){} }
+function encolar(celda){
+  S.cola=S.cola.filter(c=>!(c.d===celda.d&&c.jid===celda.jid));
+  S.cola.push(celda);
+}
+function escribir(d, doc){
+  const id=doc.id||nuevoId(PREFIJOS[COLECCIONES[d]]||'x');
+  const act=(S.docs[String(d)]||{})[id];
+  // el sello siempre le gana al documento que ya está (dos toques en el mismo ms)
+  doc=Object.assign({}, doc, { id, t:Math.max(Date.now(), act?act.t+1:0), por:S.yo||'' });
+  fusionarDoc(S.docs, d, doc);
+  encolar(celdaDe(d, doc));
+  guardar(); onCambio(); programarSync(300);
+  return doc;
+}
+function borrar(d, id){
+  const act=(S.docs[String(d)]||{})[id]; if(!act) return null;
+  return escribir(d, Object.assign({}, act, { del:true }));
+}
+function fijarClave(clave){
+  S.clave=normalizarClave(clave); S.sala=S.clave?derivarSala(S.clave):'';
+  guardar(); onCambio(); programarSync(0);
+}
+
+/* ============================================================
+   5. SINCRONIZACIÓN — servidor PythonAnywhere (misma API del golf)
+   POST/GET /api/torneo/<sala>/scores · X-Torneo-Token · {celdas:[...]}
+   ============================================================ */
+const estadoSync={ estado:'sin clave', ultimo:0, desfase:0 };
+let syncOcupado=false, syncTimer=null;
+function urlSala(sala){ return SYNC_URL+'/api/torneo/'+sala+'/scores'; }
+async function sync(){
+  if(!S||!S.sala){ estadoSync.estado='sin clave'; onSync(); return false; }
+  if(syncOcupado) return false;
+  syncOcupado=true;
+  let hubo=false;
+  try{
+    const pendientes=S.cola.slice();
+    const opts={ method:pendientes.length?'POST':'GET', headers:{'X-Torneo-Token':SYNC_TOKEN,'Content-Type':'application/json'} };
+    if(pendientes.length) opts.body=JSON.stringify({celdas:pendientes});
+    const r=await fetch(urlSala(S.sala), opts);
+    if(r.status===401) throw new Error('token');
+    if(!r.ok) throw new Error('http '+r.status);
+    /* la fusión gana por sello del teléfono que escribe: un reloj desajustado
+       haría que sus capturas pierdan contra datos viejos. Lo medimos contra la
+       hora del servidor para poder avisarlo. */
+    try{
+      const hd=r.headers&&r.headers.get&&r.headers.get('Date');
+      if(hd){ const srv=Date.parse(hd); if(srv) estadoSync.desfase=srv-Date.now(); }
+    }catch(e){}
+    const j=await r.json();
+    const celdas=(j&&j.celdas)||[];
+    hubo=fusionarCeldas(S.docs, celdas)>0;
+    const eco={}; celdas.forEach(c=>{ const k=c.d+'.'+c.jid; eco[k]=Math.max(eco[k]||0, c.t||0); });
+    S.cola=S.cola.filter(c=>!((eco[c.d+'.'+c.jid]||0)>=c.t));
+    estadoSync.estado='en vivo'; estadoSync.ultimo=Date.now(); S.ultimaSync=estadoSync.ultimo;
+    guardar();
+    if(hubo) onCambio();
+  }catch(e){
+    estadoSync.estado= e.message==='token'?'token':'sin señal';
+  }
+  syncOcupado=false; onSync();
+  return hubo;
+}
+function programarSync(ms){
+  if(typeof module!=='undefined') return;   // en pruebas se llama sync() a mano
+  clearTimeout(syncTimer); syncTimer=setTimeout(sync, ms);
+}
+
+/* ============================================================
+   6. INTERFAZ — render, navegación, chip, hoja modal, clave, Resumen
+   ============================================================ */
+const $=id=>document.getElementById(id);
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function barra(pct,color){ return '<div class="barra"><i style="width:'+Math.round(Math.min(1,Math.max(0,+pct||0))*100)+'%'+(color?';background:'+color:'')+'"></i></div>'; }
+const VISTAS=[['resumen','Resumen','▦'],['avance','Avance','▤'],['gastos','Gastos','$'],['pendientes','Pendientes','!'],['mas','Más','…']];
+function irA(v){ S.vista=v; guardar(); render(); window.scrollTo(0,0); }
+function pintarNav(){
+  const base={materiales:'mas',bitacora:'mas',ajustes:'mas'}[S.vista]||S.vista;
+  $('nav').innerHTML=VISTAS.map(([id,nom,ic])=>'<a href="#" class="'+(base===id?'on':'')+'" onclick="irA(\''+id+'\');return false"><span>'+ic+'</span>'+nom+'</a>').join('');
+}
+/* más de 2 minutos de diferencia con el servidor: las capturas de este teléfono
+   pueden perder contra las de otro al fusionar */
+function relojDesfasado(){ return Math.abs(estadoSync.desfase)>120000; }
+function textoReloj(){
+  if(!estadoSync.ultimo) return 'sin comprobar';
+  if(!relojDesfasado()) return 'al día';
+  const min=Math.round(Math.abs(estadoSync.desfase)/60000);
+  return 'este teléfono va '+(estadoSync.desfase>0?'atrasado':'adelantado')+' '+min+' min · corrige la hora en Ajustes de iOS para que tus capturas no se pierdan';
+}
+function pintarChip(){
+  const el=$('chip'); if(!el||!S) return;
+  const e=estadoSync.estado, n=S.cola.length;
+  let txt='○ sin clave', cls='';
+  if(S.sala){
+    if(e==='en vivo'){ const s=Math.max(0,Math.round((Date.now()-estadoSync.ultimo)/1000)); txt='● en vivo · hace '+(s<60?s+' s':Math.round(s/60)+' min'); cls='vivo'; }
+    else if(e==='token'){ txt='○ token rechazado'; cls='malo'; }
+    else { txt='○ sin señal'; cls='malo'; }
+    if(n) txt+=' · '+n+' por subir';
+    if(relojDesfasado()) { txt+=' · reloj desfasado'; cls='malo'; }
+  }
+  el.textContent=txt; el.className=cls;
+}
+function hoja(titulo, cuerpo){ $('hoja').innerHTML='<h3>'+esc(titulo)+'</h3>'+cuerpo; $('velo').classList.add('on'); }
+function cerrarHoja(){ $('velo').classList.remove('on'); $('hoja').innerHTML=''; }
+/* la sala se deriva de la clave: mostrar su prefijo mientras se escribe permite
+   comparar dos teléfonos ("¿los dos dicen obra-483f16…?") sin revelar la clave */
+function pintarSalaClave(){
+  const el=$('claveSala'); if(!el) return;
+  const v=normalizarClave($('claveInput').value);
+  el.innerHTML=v?'Sala: <b>'+esc(derivarSala(v).slice(0,11))+'…</b> · debe ser la misma en los dos teléfonos':'&nbsp;';
+}
+function mensajeVacio(){
+  const pref=esc((S.sala||'').slice(0,11))+'…';
+  if(estadoSync.estado==='en vivo') return 'Conectado al servidor, pero esta sala está vacía.<br><small>Sala '+pref+'. Si en el otro teléfono la sala es distinta, la clave quedó mal escrita: cámbiala en Más → Ajustes.</small>';
+  if(estadoSync.estado==='token') return 'El servidor rechazó el acceso.<br><small>Avísale a Paulino.</small>';
+  return 'Sin conexión con el servidor todavía.<br><small>Sala '+pref+'. Revisa que el teléfono tenga datos o wifi; la app reintenta sola cada 15 s.</small>';
+}
+function mostrarClave(){
+  $('clave').classList.add('on'); $('claveInput').value=S.clave||''; pintarSalaClave();
+  const yo=S.yo||'Paulino', sel=$('yoInput');
+  if(yo==='Paulino'||yo==='Denise'){ sel.value=yo; $('yoOtro').style.display='none'; }
+  else { sel.value='otro'; $('yoOtro').value=yo; $('yoOtro').style.display=''; }
+}
+function entrarClave(){
+  const c=$('claveInput').value; if(!normalizarClave(c)){ alert('Escribe la clave de la obra.'); return; }
+  let yo=$('yoInput').value; if(yo==='otro') yo=$('yoOtro').value.trim(); if(!yo){ alert('Escribe tu nombre.'); return; }
+  S.yo=yo; fijarClave(c); $('clave').classList.remove('on'); render();
+}
+function porQuien(m){ return m.por?'<small>'+esc(m.por)+' · '+esc(fechaCorta(m.fecha))+'</small>':''; }
+function vistaResumen(c){
+  let h='<div class="cifras">'
+    +'<div class="cifra"><b>'+dinero(c.contrato)+'</b><span>Contrato</span></div>'
+    +'<div class="cifra"><b>'+dinero(c.devengado)+'</b><span>Obra ejecutada</span></div>'
+    +'<div class="cifra"><b>'+dinero(c.pagado)+'</b><span>Pagado</span></div>'
+    +'<div class="cifra '+(c.porPagar<-0.5?'neg':'')+'"><b>'+dinero(c.porPagar)+'</b><span>Por pagar</span></div></div>';
+  h+='<div class="tarjeta"><h2>Avance global · '+Math.round(c.avance*100)+'%</h2>'+barra(c.avance);
+  h+=c.etapas.map(e=>'<div class="etapa"><div class="txt">'+esc(e.etapa)+barra(e.pct,'var(--azul)')+'</div><div class="num">'+Math.round(e.pct*100)+'%<small>'+dinero(e.devengado)+' de '+dinero(e.contrato)+'</small></div></div>').join('')+'</div>';
+  if(c.alertas.length) h+='<div class="tarjeta"><h2>Alertas</h2>'+c.alertas.map(a=>'<div class="alerta '+a.nivel+'">'+esc(a.texto)+'</div>').join('')+'</div>';
+  h+='<div class="tarjeta"><h2>Pago sugerido hoy</h2><div class="fila" style="cursor:default"><div class="txt">Ejecutado menos retención del '+Math.round(c.cfg.retencion*100)+'% y menos lo pagado<small>Retención acumulada: '+dinero(c.retencion)+'</small></div><div class="num"><b>'+dinero(c.pagoSugerido)+'</b></div></div></div>';
+  h+='<div class="tarjeta"><h2>Gasto de la obra</h2>'
+    +'<div class="fila" onclick="S.gastosTab=\'mo\';irA(\'gastos\')"><div class="txt">Mano de obra<small>pagado al contratista</small></div><div class="num">'+dinero(c.gastoMO)+'</div></div>'
+    +'<div class="fila" onclick="S.gastosTab=\'materiales\';irA(\'gastos\')"><div class="txt">Materiales<small>comprados por el cliente</small></div><div class="num">'+dinero(c.materiales.totalComprado)+'</div></div>'
+    +'<div class="fila" style="cursor:default"><div class="txt"><b>Total gastado</b></div><div class="num"><b>'+dinero(c.gastoTotal)+'</b></div></div></div>';
+  if(c.desembolsos.length) h+='<div class="tarjeta"><h2>Quién ha desembolsado</h2>'
+    +c.desembolsos.map(b=>'<div class="fila" style="cursor:default"><div class="txt"'+(b.nombre===SIN_ASIGNAR?' class="ambar"':'')+'>'+esc(b.nombre)
+      +'<small>mano de obra '+dinero(b.mo)+' · materiales '+dinero(b.materiales)+'</small></div><div class="num">'+dinero(b.total)+'</div></div>').join('')+'</div>';
+  h+='<div class="tarjeta"><h2>Últimos movimientos</h2>'+(c.movimientos.length?c.movimientos.slice(0,4).map(m=>'<div class="fila" style="cursor:default"><div class="txt">'+esc(m.texto)+porQuien(m)+'</div><div class="num gris">'+m.tipo+'</div></div>').join(''):'<div class="vacio">Sin capturas todavía</div>')+'</div>';
+  return h;
+}
+/* ============================================================
+   7. VISTAS Y FORMULARIOS
+   ============================================================ */
+function leerForm(ids){ const o={}; ids.forEach(i=>{ const el=$('f_'+i); o[i]=el?el.value:''; }); return o; }
+function numero(v){ v=String(v).replace(/[^0-9.\-]/g,''); return v===''?NaN:Number(v); }
+function campo(id,etq,tipo,val,extra){ return '<label>'+esc(etq)+'</label><input id="f_'+id+'" type="'+tipo+'" '+(tipo==='number'?'inputmode="decimal" step="any" ':'')+'value="'+esc(val)+'" '+(extra||'')+'>'; }
+function num(v){ return +(+v||0).toFixed(2); }
+
+/* — Avance — */
+function vistaAvance(c){
+  let h='', etapa=null;
+  c.rubros.forEach(r=>{
+    if(r.etapa!==etapa){ if(etapa!==null) h+='</div>'; etapa=r.etapa; h+='<div class="tarjeta"><h2>'+esc(etapa)+'</h2>'; }
+    h+='<div class="fila" onclick="abrirRubro(\''+r.id+'\')"><div class="txt">'+esc(r.n+'. '+r.nombre)+barra(r.pct)
+      +'<small>'+num(r.ejecutado)+' / '+r.cant+' '+esc(r.unidad)+' · '+Math.round(r.pct*100)+'%</small></div>'
+      +'<div class="num">'+dinero(r.devengado)+'<small class="'+(r.adelantado?'rojo':'')+'">'+(r.adelantado?'adelantado ':'por pagar ')+dinero(r.porPagar)+'</small></div></div>';
+  });
+  return h+(etapa!==null?'</div>':'<div class="vacio">Sin rubros</div>');
+}
+function rubroDe(id){ return calcular(S.docs).rubros.find(r=>r.id===id); }
+function abrirRubro(id){
+  const r=rubroDe(id); if(!r) return;
+  const meds=vivos(S.docs,2).filter(a=>a.rubro===id).sort((a,b)=>b.t-a.t);
+  hoja(r.n+'. '+r.nombre,
+    '<div class="gris" style="font-size:14px">'+esc(r.etapa)+' · '+r.cant+' '+esc(r.unidad)+' × '+dinero(r.moU+r.matU)+' = '+dinero(r.importe)+(r.nota?'<br>'+esc(r.nota):'')+'</div>'
+    +barra(r.pct)+'<div class="fila" style="cursor:default"><div class="txt">Ejecutado<small>'+num(r.ejecutado)+' '+esc(r.unidad)+' · '+Math.round(r.pct*100)+'%</small></div><div class="num">'+dinero(r.devengado)+'<small>pagado '+dinero(r.pagado)+'</small></div></div>'
+    +'<div class="acciones"><button onclick="formMedicion(\''+id+'\')">Registrar medición</button><button class="btn sec" onclick="formRubro(\''+id+'\')">Editar rubro</button></div>'
+    +'<h2 style="margin:18px 0 6px;font-size:13px;color:var(--gris);text-transform:uppercase;letter-spacing:.6px">Mediciones</h2>'
+    +(meds.length?meds.map(m=>'<div class="fila" style="cursor:default"><div class="txt">'+num(m.cantidad)+' '+esc(r.unidad)+(m.nota?' · '+esc(m.nota):'')+'<small>'+esc(fechaCorta(m.fecha))+' · '+esc(m.por)+'</small></div><button class="btn chico peligro" onclick="borrarMedicion(\''+m.id+'\')">Borrar</button></div>').join(''):'<div class="vacio">Sin mediciones</div>'));
+}
+function formMedicion(id){
+  const r=rubroDe(id);
+  hoja('Medición · '+r.nombre, campo('fecha','Fecha','date',hoyISO())+campo('cantidad','Cantidad ejecutada ('+r.unidad+')','number','')+campo('nota','Nota','text','')
+    +'<div class="acciones"><button class="btn sec" onclick="abrirRubro(\''+id+'\')">Cancelar</button><button onclick="guardarMedicion(\''+id+'\')">Guardar</button></div>');
+  $('f_cantidad').focus();
+}
+function guardarMedicion(id){
+  const f=leerForm(['fecha','cantidad','nota']); const n=numero(f.cantidad);
+  if(!f.fecha||isNaN(n)||n<=0){ alert('Escribe fecha y una cantidad mayor que cero.'); return; }
+  escribir(2,{ rubro:id, fecha:f.fecha, cantidad:n, nota:f.nota.trim() }); abrirRubro(id);
+}
+function borrarMedicion(mid){ const m=(S.docs['2']||{})[mid]; if(!m||!confirm('¿Borrar esta medición?')) return; borrar(2,mid); abrirRubro(m.rubro); }
+function formRubro(id){
+  const r=rubroDe(id);
+  hoja('Editar rubro '+r.n, campo('nombre','Nombre','text',r.nombre)+campo('cant','Cantidad ('+r.unidad+')','number',r.cant)+campo('moU','Mano de obra $/'+r.unidad,'number',r.moU)+campo('matU','Material $/'+r.unidad,'number',r.matU)+campo('nota','Nota','text',r.nota||'')
+    +'<div class="acciones"><button class="btn sec" onclick="abrirRubro(\''+id+'\')">Cancelar</button><button onclick="guardarRubro(\''+id+'\')">Guardar</button></div>');
+}
+function guardarRubro(id){
+  const f=leerForm(['nombre','cant','moU','matU','nota']); const base=S.docs['1'][id];
+  const cant=numero(f.cant), moU=numero(f.moU), matU=numero(f.matU);
+  if(!f.nombre.trim()||isNaN(cant)||cant<0||isNaN(moU)||isNaN(matU)){ alert('Revisa nombre, cantidad y precios.'); return; }
+  escribir(1,Object.assign({},base,{ nombre:f.nombre.trim(), cant, moU, matU, nota:f.nota.trim() })); abrirRubro(id);
+}
+
+/* — Gastos: dos pestañas, mano de obra (pagos al contratista) y materiales (compras) — */
+function vistaGastos(c){
+  const tab=S.gastosTab==='materiales'?'materiales':'mo';
+  const seg='<div class="seg">'
+    +'<a href="#" class="'+(tab==='mo'?'on':'')+'" onclick="S.gastosTab=\'mo\';guardar();render();return false">Mano de obra<small>'+dinero(c.gastoMO)+'</small></a>'
+    +'<a href="#" class="'+(tab==='materiales'?'on':'')+'" onclick="S.gastosTab=\'materiales\';guardar();render();return false">Materiales<small>'+dinero(c.materiales.totalComprado)+'</small></a></div>';
+  return seg+(tab==='mo'?vistaPagos(c):vistaCompras(c));
+}
+/* debajo del importe: quién puso el dinero (lo que se pregunta al revisar la lista) */
+function quienPaga(x){ return x.paga?'<small>'+esc(x.paga)+'</small>':'<small class="ambar">sin asignar</small>'; }
+function resumenBolsas(c,campo){
+  const b=c.desembolsos.filter(x=>x[campo]>0.005);
+  return b.length?'<div class="tarjeta"><h2>Quién lo desembolsó</h2>'+b.map(x=>'<div class="fila" style="cursor:default"><div class="txt"'+(x.nombre===SIN_ASIGNAR?' class="ambar"':'')+'>'+esc(x.nombre)+'</div><div class="num">'+dinero(x[campo])+'</div></div>').join('')+'</div>':'';
+}
+function vistaCompras(c){
+  let h='<div class="cifras"><div class="cifra"><b>'+dinero(c.materiales.totalComprado)+'</b><span>Comprado</span></div><div class="cifra"><b>'+dinero(c.materiales.totalEst)+'</b><span>Estimado</span></div></div>';
+  h+='<div style="margin:12px 0"><button onclick="formCompra()">Nueva compra</button></div>';
+  h+='<div class="tarjeta"><h2>Compras de materiales</h2>'+(c.compras.length?c.compras.map(k=>'<div class="fila" onclick="formCompra(\''+k.id+'\')"><div class="txt">'+esc(k.concepto||k.proveedor||'Compra')+'<small>'+esc(fechaCorta(k.fecha))+(k.proveedor?' · '+esc(k.proveedor):'')+(k.ref?' · '+esc(k.ref):'')+' · capturó '+esc(k.por)+'</small></div><div class="num">'+dinero(k.monto)+quienPaga(k)+'</div></div>').join(''):'<div class="vacio">Sin compras</div>')+'</div>';
+  h+=resumenBolsas(c,'materiales');
+  h+='<div class="tarjeta menu"><a href="#" onclick="irA(\'materiales\');return false">Lista de materiales: estimado vs comprado <span>›</span></a></div>';
+  return h;
+}
+function opcionesPaga(c,sel){
+  const lista=c.pagadores.slice();
+  if(sel&&lista.indexOf(sel)<0) lista.push(sel);
+  return '<label>Quién desembolsa</label><select id="f_paga"><option value="">— sin asignar —</option>'+lista.map(n=>'<option'+(n===sel?' selected':'')+'>'+esc(n)+'</option>').join('')+'</select>';
+}
+function opcionesMaterial(sel){
+  const mats=vivos(S.docs,4).sort((a,b)=>a.id.localeCompare(b.id));
+  return '<label>Material de la lista (opcional)</label><select id="f_material"><option value="">— ninguno / varios —</option>'+mats.map(m=>'<option value="'+m.id+'"'+(m.id===sel?' selected':'')+'>'+esc(m.nombre)+'</option>').join('')+'</select>';
+}
+function formCompra(id, materialSugerido){
+  const c=calcular(S.docs);
+  const k=id?S.docs['7'][id]:{ fecha:hoyISO(), proveedor:'', concepto:'', monto:'', material:materialSugerido||'', ref:'', paga:'' };
+  if(!k) return;
+  hoja(id?'Editar compra':'Nueva compra', campo('fecha','Fecha','date',k.fecha)+campo('monto','Monto $ (con IVA)','number',k.monto)+campo('concepto','Qué se compró','text',k.concepto||'')+opcionesPaga(c,k.paga)+campo('proveedor','Proveedor / tienda','text',k.proveedor||'')+opcionesMaterial(k.material)+campo('ref','Ticket / nota de venta','text',k.ref||'')
+    +'<div class="acciones">'+(id?'<button class="btn peligro" onclick="borrarCompra(\''+id+'\')">Borrar</button>':'<button class="btn sec" onclick="cerrarHoja()">Cancelar</button>')+'<button onclick="guardarCompra(\''+(id||'')+'\')">Guardar</button></div>');
+  if(!id) $('f_monto').focus();
+}
+function guardarCompra(id){
+  const f=leerForm(['fecha','monto','concepto','paga','proveedor','material','ref']); const m=numero(f.monto);
+  if(!f.fecha||isNaN(m)||m<=0){ alert('Escribe fecha y un monto mayor que cero.'); return; }
+  if(!f.concepto.trim()&&!f.proveedor.trim()){ alert('Escribe qué se compró o el proveedor.'); return; }
+  const base=id?S.docs['7'][id]:{};
+  escribir(7,Object.assign({},base,{ fecha:f.fecha, monto:m, concepto:f.concepto.trim(), paga:f.paga, proveedor:f.proveedor.trim(), material:f.material, ref:f.ref.trim() })); cerrarHoja();
+}
+function borrarCompra(id){ if(!confirm('¿Borrar esta compra?')) return; borrar(7,id); cerrarHoja(); }
+
+/* — Pagos al contratista (mano de obra) — */
+function nombreRubroCorto(c,id){ if(id==='anticipo') return 'Anticipo'; if(id==='otro') return 'Otro'; const r=c.rubros.find(x=>x.id===id); return r?r.n+'. '+r.nombre:id; }
+function vistaPagos(c){
+  const pagos=vivos(S.docs,3).sort((a,b)=>(b.fecha>a.fecha?1:b.fecha<a.fecha?-1:b.t-a.t));
+  let h='<div class="cifras"><div class="cifra"><b>'+dinero(c.pagado)+'</b><span>Pagado a Miguel</span></div><div class="cifra '+(c.porPagar<-0.5?'neg':'')+'"><b>'+dinero(c.porPagar)+'</b><span>Por pagar</span></div></div>';
+  h+=c.alertas.filter(a=>a.nivel==='rojo').map(a=>'<div class="alerta rojo">'+esc(a.texto)+'</div>').join('');
+  h+='<div style="margin:12px 0"><button onclick="formPago()">Nuevo pago</button></div>';
+  h+='<div class="tarjeta"><h2>Pagos al contratista · anticipo '+dinero(c.anticipoPagado)+'</h2>'+(pagos.length?pagos.map(p=>'<div class="fila" onclick="formPago(\''+p.id+'\')"><div class="txt">'+esc(p.concepto||nombreRubroCorto(c,p.rubro))+'<small>'+esc(fechaCorta(p.fecha))+' · '+esc(nombreRubroCorto(c,p.rubro))+(p.ref?' · '+esc(p.ref):'')+' · capturó '+esc(p.por)+'</small></div><div class="num">'+dinero(p.monto)+quienPaga(p)+'</div></div>').join(''):'<div class="vacio">Sin pagos</div>')+'</div>';
+  h+=resumenBolsas(c,'mo');
+  return h;
+}
+function opcionesRubro(c,sel){ return '<label>Aplica a</label><select id="f_rubro">'+[['anticipo','Anticipo'],['otro','Otro']].concat(c.rubros.map(r=>[r.id,r.n+'. '+r.nombre])).map(([v,n])=>'<option value="'+v+'"'+(v===sel?' selected':'')+'>'+esc(n)+'</option>').join('')+'</select>'; }
+function formPago(id){
+  const c=calcular(S.docs); const p=id?S.docs['3'][id]:{ fecha:hoyISO(), rubro:'anticipo', concepto:'', monto:'', ref:'', paga:'' };
+  if(!p) return;
+  hoja(id?'Editar pago':'Nuevo pago', campo('fecha','Fecha','date',p.fecha)+campo('monto','Monto $','number',p.monto)+opcionesPaga(c,p.paga)+opcionesRubro(c,p.rubro)+campo('concepto','Concepto','text',p.concepto||'')+campo('ref','Referencia / comprobante','text',p.ref||'')
+    +'<div class="acciones">'+(id?'<button class="btn peligro" onclick="borrarPago(\''+id+'\')">Borrar</button>':'<button class="btn sec" onclick="cerrarHoja()">Cancelar</button>')+'<button onclick="guardarPago(\''+(id||'')+'\')">Guardar</button></div>');
+  if(!id) $('f_monto').focus();
+}
+function guardarPago(id){
+  const f=leerForm(['fecha','monto','paga','rubro','concepto','ref']); const m=numero(f.monto);
+  if(!f.fecha||isNaN(m)||m<=0){ alert('Escribe fecha y un monto mayor que cero.'); return; }
+  const base=id?S.docs['3'][id]:{};
+  escribir(3,Object.assign({},base,{ fecha:f.fecha, monto:m, paga:f.paga, rubro:f.rubro, concepto:f.concepto.trim(), ref:f.ref.trim() })); cerrarHoja();
+}
+function borrarPago(id){ if(!confirm('¿Borrar este pago?')) return; borrar(3,id); cerrarHoja(); }
+
+/* — Pendientes — */
+const PRIO={ALTA:0,MEDIA:1,BAJA:2}, EST={abierto:0,'en proceso':1,resuelto:2};
+function pendientesOrdenados(){ return vivos(S.docs,5).sort((a,b)=>((EST[a.estatus]??0)-(EST[b.estatus]??0))||((PRIO[a.prioridad]??1)-(PRIO[b.prioridad]??1))||a.id.localeCompare(b.id)); }
+function pillEstatus(e){ return e==='resuelto'?'<span class="pill resuelto">RESUELTO</span>':e==='en proceso'?'<span class="pill enproceso">EN PROCESO</span>':''; }
+function vistaPendientes(){
+  const q=pendientesOrdenados(), abiertos=q.filter(x=>x.estatus!=='resuelto').length;
+  return '<div style="margin-bottom:12px"><button onclick="formPendiente()">Nuevo pendiente</button></div><div class="tarjeta"><h2>'+abiertos+' abiertos de '+q.length+'</h2>'
+    +(q.length?q.map(x=>'<div class="fila" onclick="abrirPendiente(\''+x.id+'\')"><div class="txt"><span class="pill '+esc(x.prioridad)+'">'+esc(x.prioridad)+'</span> '+pillEstatus(x.estatus)+'<br>'+esc(x.titulo)+'<small>Impacto: '+esc(x.impacto||'—')+(x.respuesta?' · respondido':'')+'</small></div><div class="num gris">›</div></div>').join(''):'<div class="vacio">Sin pendientes</div>')+'</div>';
+}
+function abrirPendiente(id){
+  const x=S.docs['5'][id]; if(!x) return;
+  const sel=e=>'<button class="btn chico '+(x.estatus===e?'':'sec')+'" onclick="cambiarEstatus(\''+id+'\',\''+e+'\')">'+e+'</button>';
+  hoja(x.titulo, '<span class="pill '+esc(x.prioridad)+'">'+esc(x.prioridad)+'</span> '+pillEstatus(x.estatus)
+    +'<p><b>Qué dice la cotización:</b> '+esc(x.dice)+'</p><p><b>Por qué importa:</b> '+esc(x.importa)+'</p><p><b>Qué pedir por escrito:</b> '+esc(x.pedir)+'</p><p><b>Impacto:</b> '+esc(x.impacto||'—')+'</p>'
+    +'<label>Estatus</label><div class="acciones" style="margin-top:4px">'+sel('abierto')+sel('en proceso')+sel('resuelto')+'</div>'
+    +'<label>Respuesta del contratista</label><textarea id="f_respuesta">'+esc(x.respuesta||'')+'</textarea>'
+    +'<div class="acciones"><button class="btn sec" onclick="formPendiente(\''+id+'\')">Editar</button><button onclick="guardarRespuesta(\''+id+'\')">Guardar respuesta</button></div>');
+}
+function cambiarEstatus(id,e){ escribir(5,Object.assign({},S.docs['5'][id],{estatus:e})); abrirPendiente(id); }
+function guardarRespuesta(id){ escribir(5,Object.assign({},S.docs['5'][id],{respuesta:$('f_respuesta').value.trim()})); cerrarHoja(); }
+function formPendiente(id){
+  const x=id?S.docs['5'][id]:{ prioridad:'MEDIA', titulo:'', dice:'', importa:'', pedir:'', impacto:'', estatus:'abierto', respuesta:'' };
+  if(!x) return;
+  hoja(id?'Editar pendiente':'Nuevo pendiente', '<label>Prioridad</label><select id="f_prioridad">'+['ALTA','MEDIA','BAJA'].map(p=>'<option'+(p===x.prioridad?' selected':'')+'>'+p+'</option>').join('')+'</select>'
+    +campo('titulo','Título','text',x.titulo)+'<label>Qué dice</label><textarea id="f_dice">'+esc(x.dice)+'</textarea><label>Por qué importa</label><textarea id="f_importa">'+esc(x.importa)+'</textarea><label>Qué pedir por escrito</label><textarea id="f_pedir">'+esc(x.pedir)+'</textarea>'+campo('impacto','Impacto ($ o Abierto)','text',x.impacto)
+    +'<div class="acciones">'+(id?'<button class="btn peligro" onclick="borrarPendiente(\''+id+'\')">Borrar</button>':'<button class="btn sec" onclick="cerrarHoja()">Cancelar</button>')+'<button onclick="guardarPendiente(\''+(id||'')+'\')">Guardar</button></div>');
+}
+function borrarPendiente(id){ if(!confirm('¿Borrar este pendiente?')) return; borrar(5,id); cerrarHoja(); }
+function guardarPendiente(id){
+  const f=leerForm(['prioridad','titulo','dice','importa','pedir','impacto']);
+  if(!f.titulo.trim()){ alert('Escribe un título.'); return; }
+  escribir(5,Object.assign({estatus:'abierto',respuesta:''},id?S.docs['5'][id]:{},{ prioridad:f.prioridad, titulo:f.titulo.trim(), dice:f.dice.trim(), importa:f.importa.trim(), pedir:f.pedir.trim(), impacto:f.impacto.trim() }));
+  cerrarHoja();
+}
+
+/* — Más — */
+function vistaMas(){ return '<div class="tarjeta menu"><a href="#" onclick="irA(\'materiales\');return false">Materiales del cliente <span>›</span></a><a href="#" onclick="irA(\'bitacora\');return false">Bitácora <span>›</span></a><a href="#" onclick="irA(\'ajustes\');return false">Ajustes <span>›</span></a></div>'; }
+
+/* — Materiales del cliente — */
+function vistaMateriales(c){
+  /* grupos en el orden en que aparecen por id; dentro del grupo por id — así un
+     material nuevo (m13) cae en su grupo y no al final de la lista */
+  const porId=vivos(S.docs,4).sort((a,b)=>a.id.localeCompare(b.id));
+  const orden=[]; porId.forEach(m=>{ if(!orden.includes(m.grupo)) orden.push(m.grupo); });
+  const mats=porId.slice().sort((a,b)=>(orden.indexOf(a.grupo)-orden.indexOf(b.grupo))||a.id.localeCompare(b.id));
+  let h='<div class="cifras"><div class="cifra"><b>'+dinero(c.materiales.totalEst)+'</b><span>Estimado</span></div><div class="cifra '+(c.materiales.dif>0.5?'neg':'')+'"><b>'+dinero(c.materiales.totalComprado)+'</b><span>Comprado</span></div></div>', grupo=null;
+  mats.forEach(m=>{
+    if(m.grupo!==grupo){ if(grupo!==null) h+='</div>'; grupo=m.grupo; h+='<div class="tarjeta"><h2>'+esc(grupo)+'</h2>'; }
+    const comp=c.materiales.porMaterial[m.id]||0;
+    h+='<div class="fila" onclick="formMaterial(\''+m.id+'\')"><div class="txt">'+esc(m.nombre)+'<small>'+m.cant+' '+esc(m.unidad)+' × '+dinero(m.puEst)+' = '+dinero(m.cant*m.puEst)+(m.nota?' · '+esc(m.nota):'')+'</small></div><div class="num'+(comp>m.cant*m.puEst+0.5?' rojo':'')+'">'+(comp?dinero(comp):'<span class="gris">—</span>')+'<small>comprado</small></div></div>';
+  });
+  return h+(grupo!==null?'</div>':'<div class="vacio">Sin materiales</div>');
+}
+function formMaterial(id){
+  const m=S.docs['4'][id]; if(!m) return;
+  const comp=(calcular(S.docs).materiales.porMaterial[m.id])||0;
+  hoja(m.nombre, '<div class="fila" style="cursor:default"><div class="txt">Comprado hasta hoy<small>suma de las compras ligadas a este material</small></div><div class="num">'+dinero(comp)+'</div></div>'
+    +'<div class="acciones" style="margin-top:8px"><button onclick="formCompra(\'\',\''+id+'\')">Registrar compra</button></div>'
+    +campo('cant','Cantidad estimada ('+m.unidad+')','number',m.cant)+campo('puEst','Precio unitario estimado $','number',m.puEst)+campo('nota','Nota','text',m.nota||'')
+    +'<div class="acciones"><button class="btn sec" onclick="cerrarHoja()">Cancelar</button><button onclick="guardarMaterial(\''+id+'\')">Guardar</button></div>');
+}
+function guardarMaterial(id){
+  const f=leerForm(['cant','puEst','nota']); const cant=numero(f.cant), pu=numero(f.puEst);
+  if(isNaN(cant)||isNaN(pu)){ alert('Revisa los números.'); return; }
+  escribir(4,Object.assign({},S.docs['4'][id],{cant, puEst:pu, nota:f.nota.trim()})); cerrarHoja();
+}
+
+/* — Bitácora — */
+function vistaBitacora(){
+  const notas=vivos(S.docs,6).sort((a,b)=>(b.fecha>a.fecha?1:b.fecha<a.fecha?-1:b.t-a.t));
+  return '<div style="margin-bottom:12px"><button onclick="formNota()">Nueva nota</button></div><div class="tarjeta">'+(notas.length?notas.map(n=>'<div class="fila" style="cursor:default"><div class="txt">'+esc(n.texto).replace(/\n/g,'<br>')+'<small>'+esc(fechaCorta(n.fecha))+' · '+esc(n.por)+'</small></div><button class="btn chico peligro" onclick="borrarNota(\''+n.id+'\')">Borrar</button></div>').join(''):'<div class="vacio">Sin notas</div>')+'</div>';
+}
+function formNota(){ hoja('Nueva nota', campo('fecha','Fecha','date',hoyISO())+'<label>Nota</label><textarea id="f_texto"></textarea><div class="acciones"><button class="btn sec" onclick="cerrarHoja()">Cancelar</button><button onclick="guardarNota()">Guardar</button></div>'); $('f_texto').focus(); }
+function guardarNota(){ const f=leerForm(['fecha','texto']); if(!f.fecha||!f.texto.trim()){ alert('Escribe la nota.'); return; } escribir(6,{fecha:f.fecha,texto:f.texto.trim()}); cerrarHoja(); }
+function borrarNota(id){ if(!confirm('¿Borrar esta nota?')) return; borrar(6,id); }
+
+/* — Ajustes — */
+function vistaAjustes(c){
+  const hora=S.ultimaSync?new Date(S.ultimaSync).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}):'';
+  return '<div class="tarjeta"><h2>Este teléfono</h2><div class="fila" style="cursor:default"><div class="txt">Yo soy<small>'+esc(S.yo||'—')+'</small></div><button class="btn chico sec" onclick="mostrarClave()">Cambiar</button></div>'
+    +'<div class="fila" style="cursor:default"><div class="txt">Clave de la obra<small>sala '+esc((S.sala||'').slice(0,11))+'… · si Denise ve la misma, están conectados</small></div><button class="btn chico sec" onclick="mostrarClave()">Cambiar</button></div>'
+    +'<div class="fila" style="cursor:default"><div class="txt">Sincronización<small>'+esc(estadoSync.estado)+(S.cola.length?' · '+S.cola.length+' por subir':'')+(hora?' · última '+hora:'')+'</small></div><button class="btn chico sec" onclick="sync().then(render)">Sincronizar</button></div>'
+    +'<div class="fila" style="cursor:default"><div class="txt'+(relojDesfasado()?' ambar':'')+'">Reloj del teléfono<small>'+esc(textoReloj())+'</small></div></div></div>'
+    +'<div class="tarjeta"><h2>Parámetros del contrato</h2>'+campo('anticipoMax','Anticipo máximo %','number',Math.round(c.cfg.anticipoMax*100))+campo('retencion','Retención %','number',Math.round(c.cfg.retencion*100))+campo('contratista','Contratista','text',c.cfg.contratista||'')+campo('pagadores','Quiénes desembolsan (separados por coma)','text',c.pagadores.join(', '))+'<div class="acciones"><button onclick="guardarAjustes()">Guardar parámetros</button></div></div>'
+    +'<div class="tarjeta"><h2>Respaldo</h2><div class="acciones"><button class="btn sec" onclick="exportarRespaldo()">Copiar respaldo JSON</button><button class="btn sec" onclick="buscarActualizacion()">Buscar versión nueva</button></div></div>'
+    +'<div class="vacio">Obra Villa Popolo 17 · versión '+VERSION+'</div>';
+}
+function guardarAjustes(){
+  const f=leerForm(['anticipoMax','retencion','contratista','pagadores']); const a=numero(f.anticipoMax), r=numero(f.retencion);
+  if(isNaN(a)||isNaN(r)||a<0||a>100||r<0||r>100){ alert('Porcentajes entre 0 y 100.'); return; }
+  const lista=f.pagadores.split(',').map(s=>s.trim()).filter(Boolean);
+  if(!lista.length){ alert('Escribe al menos un nombre de quien desembolsa.'); return; }
+  const cfg=Object.assign({},CFG_DEFAULT,(S.docs['0']||{}).cfg||{});
+  escribir(0,Object.assign(cfg,{ id:'cfg', anticipoMax:a/100, retencion:r/100, contratista:f.contratista.trim(), pagadores:lista }));
+  alert('Parámetros guardados.');
+}
+/* fuerza la descarga del HTML nuevo y recarga (normalmente basta con
+   cerrar y volver a abrir la app dos veces) */
+async function buscarActualizacion(){
+  try{
+    if(navigator.serviceWorker){
+      const r=await navigator.serviceWorker.getRegistration();
+      if(r) await r.update();
+      if(window.caches) await caches.delete('obra-vp17-v1');
+    }
+  }catch(e){}
+  location.reload();
+}
+function exportarRespaldo(){
+  const txt=JSON.stringify({ sala:S.sala, exportado:new Date().toISOString(), docs:S.docs });
+  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(()=>alert('Respaldo copiado al portapapeles.'),()=>prompt('Copia este texto:',txt));
+  else prompt('Copia este texto:',txt);
+}
+function render(){
+  if(!S) return;
+  const c=calcular(S.docs);
+  const t=$('titulo'); if(t&&t.childNodes&&t.childNodes[0]) t.childNodes[0].textContent=c.cfg.nombre||'Villa Popolo 17';
+  const sinDatos=!vivos(S.docs,1).length;
+  if(S.vista==='pagos') S.vista='gastos';   // versión 1 guardaba 'pagos'
+  const vistas={ resumen:vistaResumen, avance:vistaAvance, gastos:vistaGastos, pendientes:vistaPendientes, mas:vistaMas, materiales:vistaMateriales, bitacora:vistaBitacora, ajustes:vistaAjustes };
+  let html='';
+  if(!S.sala) html='<div class="vacio">Sin clave de la obra.<br><br><button class="btn chico" onclick="mostrarClave()">Escribir clave</button></div>';
+  else if(sinDatos&&S.vista!=='ajustes'&&S.vista!=='mas') html='<div class="vacio">'+mensajeVacio()+'<br><br><button class="btn chico sec" onclick="sync().then(render)">Volver a intentar</button> <button class="btn chico sec" onclick="mostrarClave()">Cambiar clave</button></div>';
+  else html=(vistas[S.vista]||vistaResumen)(c);
+  $('vista').innerHTML=html;
+  pintarNav(); pintarChip();
+}
+onCambio=render; onSync=pintarChip;
+
+/* ============================================================
+   8. ARRANQUE (solo en el navegador)
+   ============================================================ */
+if(typeof module!=='undefined'){
+  module.exports={ sha256, normalizarClave, derivarSala, nuevoId, dinero, fechaCorta, hoyISO, fusionarDoc, fusionarCeldas, celdaDe, vivos, calcular,
+    cargar, guardar, escribir, borrar, fijarClave, sync, estadoSync, urlSala,
+    esc, barra, mensajeVacio, relojDesfasado, textoReloj, vistaResumen, vistaAvance, vistaGastos, vistaPagos, vistaCompras, vistaPendientes, vistaMas, vistaMateriales, vistaBitacora, vistaAjustes };
+  Object.defineProperty(module.exports,'S',{get:()=>S});
+}else{
+  cargar(); if(!S.vista) S.vista='resumen';
+  $('yoInput').addEventListener('change',()=>{ $('yoOtro').style.display=$('yoInput').value==='otro'?'':'none'; });
+  $('claveBtn').addEventListener('click',entrarClave);
+  $('claveInput').addEventListener('keydown',e=>{ if(e.key==='Enter') entrarClave(); });
+  $('claveInput').addEventListener('input',pintarSalaClave);
+  $('velo').addEventListener('click',e=>{ if(e.target.id==='velo') cerrarHoja(); });
+  render();
+  if(!S.sala||!S.yo) mostrarClave();
+  sync();
+  setInterval(()=>{ if(!document.hidden) sync(); else pintarChip(); },15000);
+  /* al volver al frente baja lo nuevo; al salir sube lo que quedó pendiente,
+     para que cerrar la app justo después de capturar no retrase el envío */
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) sync(); else if(S.cola.length) sync(); });
+  window.addEventListener('pagehide',()=>{ if(S.cola.length) sync(); });
+  window.addEventListener('online',()=>sync());
+  /* copia local del propio HTML: la app abre aunque la red falle al arrancar */
+  if((location.protocol==='https:'||location.hostname==='localhost')&&navigator.serviceWorker) navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>
