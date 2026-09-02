@@ -37,7 +37,8 @@ main{ padding:14px 14px 20px; max-width:640px; margin:0 auto; }
 .pill{ display:inline-block; font-size:11px; font-weight:700; border-radius:6px; padding:2px 6px; letter-spacing:.4px; }
 .pill.ALTA{ background:#FDE7E5; color:var(--rojo); } .pill.MEDIA{ background:#FFF1D6; color:var(--ambar); } .pill.BAJA{ background:#E7EEF6; color:var(--azul); }
 .pill.resuelto{ background:#E3F3E9; color:var(--ok); } .pill.enproceso{ background:#E7EEF6; color:var(--azul); }
-.rojo{ color:var(--rojo); } .ok{ color:var(--ok); } .gris{ color:var(--gris); }
+.rojo{ color:var(--rojo); } .ok{ color:var(--ok); } .gris{ color:var(--gris); } .ambar{ color:var(--ambar); }
+.num small.ambar{ color:var(--ambar); }
 button,.btn{ font:inherit; border:0; border-radius:12px; padding:12px 16px; background:var(--tierra); color:#fff; font-weight:600; width:100%; cursor:pointer; }
 .btn.sec{ background:#EFE7DD; color:var(--tierra); } .btn.peligro{ background:#FDE7E5; color:var(--rojo); } .btn.chico{ width:auto; padding:8px 12px; font-size:14px; }
 nav{ position:fixed; left:0; right:0; bottom:0; background:var(--papel); border-top:1px solid var(--linea); display:flex; padding-bottom:env(safe-area-inset-bottom); z-index:5; }
@@ -85,7 +86,7 @@ button:disabled{ opacity:.45; }
 /* ============================================================
    1. CONSTANTES
    ============================================================ */
-const VERSION = 2;
+const VERSION = 3;
 const LLAVE_LS = 'obra-vp17';
 const SYNC_URL = 'https://paulinofo.pythonanywhere.com';
 const SYNC_TOKEN = '9eb0b306ada4cdd025982f97f18c0da3';
@@ -166,6 +167,9 @@ function vivos(docs, d){ return Object.values(docs[String(d)]||{}).filter(x=>!x.
    4. MOTOR DE CÁLCULO (funciones puras sobre docs)
    ============================================================ */
 const CFG_DEFAULT={ id:'cfg', t:0, nombre:'Villa Popolo 17', contratista:'', anticipoMax:0.3, retencion:0.1, version:1 };
+/* quién pone el dinero de cada gasto (campo 'paga' en pagos y compras) */
+const PAGADORES_DEFAULT=['Denise','Dorila'];
+const SIN_ASIGNAR='Sin asignar';
 function calcular(docs){
   const cfg=Object.assign({}, CFG_DEFAULT, (docs['0']||{}).cfg||{});
   const rubrosBase=vivos(docs,1).sort((a,b)=>(a.orden||0)-(b.orden||0));
@@ -204,6 +208,19 @@ function calcular(docs){
   const totalEst=mats.reduce((s,m)=>s+(+m.cant||0)*(+m.puEst||0),0);
   const totalComprado=mats.reduce((s,m)=>s+(+m.comprado||0),0)+compras.reduce((s,k)=>s+(+k.monto||0),0);
   const gastoMO=pagado, gastoTotal=pagado+totalComprado;
+  /* bolsas: cuánto ha puesto cada quien, separando mano de obra de materiales */
+  const pagadores=(Array.isArray(cfg.pagadores)&&cfg.pagadores.length?cfg.pagadores:PAGADORES_DEFAULT).slice();
+  const bolsas={};
+  const anota=(quien,campo,monto)=>{
+    const k=String(quien||'').trim()||SIN_ASIGNAR;
+    const o=bolsas[k]||(bolsas[k]={nombre:k,mo:0,materiales:0,total:0});
+    o[campo]+=monto; o.total+=monto;
+  };
+  pagos.forEach(p=>anota(p.paga,'mo',+p.monto||0));
+  compras.forEach(k=>anota(k.paga,'materiales',+k.monto||0));
+  const desembolsos=Object.values(bolsas).sort((a,b)=>((a.nombre===SIN_ASIGNAR)-(b.nombre===SIN_ASIGNAR))||(b.total-a.total));
+  const sinAsignar=(bolsas[SIN_ASIGNAR]||{total:0}).total;
+  if(sinAsignar>0.005) alertas.push({nivel:'ambar', texto:'Hay '+dinero(sinAsignar)+' sin saber quién los desembolsó: ábrelos en Gastos y elige Denise o Dorila.'});
   const nombreRubro=id=>{ const r=rubros.find(x=>x.id===id); return r?r.nombre:(id==='anticipo'?'Anticipo':'Otro'); };
   const movimientos=[]
     .concat(avances.map(a=>({tipo:'avance', fecha:a.fecha, t:a.t, por:a.por||'', texto:(+a.cantidad)+' '+((rubros.find(r=>r.id===a.rubro)||{}).unidad||'')+' · '+nombreRubro(a.rubro)})))
@@ -212,7 +229,8 @@ function calcular(docs){
     .sort((a,b)=>b.t-a.t);
   return { cfg, rubros, etapas, contrato, devengado, pagado, porPagar, avance:contrato>0?devengado/contrato:0,
            anticipoPagado, retencion, pagoSugerido, alertas,
-           materiales:{totalEst,totalComprado,dif:totalComprado-totalEst,porMaterial}, compras, gastoMO, gastoTotal, movimientos };
+           materiales:{totalEst,totalComprado,dif:totalComprado-totalEst,porMaterial}, compras, gastoMO, gastoTotal,
+           pagadores, desembolsos, sinAsignar, movimientos };
 }
 
 /* ============================================================
@@ -357,6 +375,9 @@ function vistaResumen(c){
     +'<div class="fila" onclick="S.gastosTab=\'mo\';irA(\'gastos\')"><div class="txt">Mano de obra<small>pagado al contratista</small></div><div class="num">'+dinero(c.gastoMO)+'</div></div>'
     +'<div class="fila" onclick="S.gastosTab=\'materiales\';irA(\'gastos\')"><div class="txt">Materiales<small>comprados por el cliente</small></div><div class="num">'+dinero(c.materiales.totalComprado)+'</div></div>'
     +'<div class="fila" style="cursor:default"><div class="txt"><b>Total gastado</b></div><div class="num"><b>'+dinero(c.gastoTotal)+'</b></div></div></div>';
+  if(c.desembolsos.length) h+='<div class="tarjeta"><h2>Quién ha desembolsado</h2>'
+    +c.desembolsos.map(b=>'<div class="fila" style="cursor:default"><div class="txt"'+(b.nombre===SIN_ASIGNAR?' class="ambar"':'')+'>'+esc(b.nombre)
+      +'<small>mano de obra '+dinero(b.mo)+' · materiales '+dinero(b.materiales)+'</small></div><div class="num">'+dinero(b.total)+'</div></div>').join('')+'</div>';
   h+='<div class="tarjeta"><h2>Últimos movimientos</h2>'+(c.movimientos.length?c.movimientos.slice(0,4).map(m=>'<div class="fila" style="cursor:default"><div class="txt">'+esc(m.texto)+porQuien(m)+'</div><div class="num gris">'+m.tipo+'</div></div>').join(''):'<div class="vacio">Sin capturas todavía</div>')+'</div>';
   return h;
 }
@@ -422,30 +443,43 @@ function vistaGastos(c){
     +'<a href="#" class="'+(tab==='materiales'?'on':'')+'" onclick="S.gastosTab=\'materiales\';guardar();render();return false">Materiales<small>'+dinero(c.materiales.totalComprado)+'</small></a></div>';
   return seg+(tab==='mo'?vistaPagos(c):vistaCompras(c));
 }
+/* debajo del importe: quién puso el dinero (lo que se pregunta al revisar la lista) */
+function quienPaga(x){ return x.paga?'<small>'+esc(x.paga)+'</small>':'<small class="ambar">sin asignar</small>'; }
+function resumenBolsas(c,campo){
+  const b=c.desembolsos.filter(x=>x[campo]>0.005);
+  return b.length?'<div class="tarjeta"><h2>Quién lo desembolsó</h2>'+b.map(x=>'<div class="fila" style="cursor:default"><div class="txt"'+(x.nombre===SIN_ASIGNAR?' class="ambar"':'')+'>'+esc(x.nombre)+'</div><div class="num">'+dinero(x[campo])+'</div></div>').join('')+'</div>':'';
+}
 function vistaCompras(c){
   let h='<div class="cifras"><div class="cifra"><b>'+dinero(c.materiales.totalComprado)+'</b><span>Comprado</span></div><div class="cifra"><b>'+dinero(c.materiales.totalEst)+'</b><span>Estimado</span></div></div>';
   h+='<div style="margin:12px 0"><button onclick="formCompra()">Nueva compra</button></div>';
-  h+='<div class="tarjeta"><h2>Compras de materiales</h2>'+(c.compras.length?c.compras.map(k=>'<div class="fila" onclick="formCompra(\''+k.id+'\')"><div class="txt">'+esc(k.concepto||k.proveedor||'Compra')+'<small>'+esc(fechaCorta(k.fecha))+(k.proveedor?' · '+esc(k.proveedor):'')+(k.ref?' · '+esc(k.ref):'')+' · '+esc(k.por)+'</small></div><div class="num">'+dinero(k.monto)+'</div></div>').join(''):'<div class="vacio">Sin compras</div>')+'</div>';
+  h+='<div class="tarjeta"><h2>Compras de materiales</h2>'+(c.compras.length?c.compras.map(k=>'<div class="fila" onclick="formCompra(\''+k.id+'\')"><div class="txt">'+esc(k.concepto||k.proveedor||'Compra')+'<small>'+esc(fechaCorta(k.fecha))+(k.proveedor?' · '+esc(k.proveedor):'')+(k.ref?' · '+esc(k.ref):'')+' · capturó '+esc(k.por)+'</small></div><div class="num">'+dinero(k.monto)+quienPaga(k)+'</div></div>').join(''):'<div class="vacio">Sin compras</div>')+'</div>';
+  h+=resumenBolsas(c,'materiales');
   h+='<div class="tarjeta menu"><a href="#" onclick="irA(\'materiales\');return false">Lista de materiales: estimado vs comprado <span>›</span></a></div>';
   return h;
+}
+function opcionesPaga(c,sel){
+  const lista=c.pagadores.slice();
+  if(sel&&lista.indexOf(sel)<0) lista.push(sel);
+  return '<label>Quién desembolsa</label><select id="f_paga"><option value="">— sin asignar —</option>'+lista.map(n=>'<option'+(n===sel?' selected':'')+'>'+esc(n)+'</option>').join('')+'</select>';
 }
 function opcionesMaterial(sel){
   const mats=vivos(S.docs,4).sort((a,b)=>a.id.localeCompare(b.id));
   return '<label>Material de la lista (opcional)</label><select id="f_material"><option value="">— ninguno / varios —</option>'+mats.map(m=>'<option value="'+m.id+'"'+(m.id===sel?' selected':'')+'>'+esc(m.nombre)+'</option>').join('')+'</select>';
 }
 function formCompra(id, materialSugerido){
-  const k=id?S.docs['7'][id]:{ fecha:hoyISO(), proveedor:'', concepto:'', monto:'', material:materialSugerido||'', ref:'' };
+  const c=calcular(S.docs);
+  const k=id?S.docs['7'][id]:{ fecha:hoyISO(), proveedor:'', concepto:'', monto:'', material:materialSugerido||'', ref:'', paga:'' };
   if(!k) return;
-  hoja(id?'Editar compra':'Nueva compra', campo('fecha','Fecha','date',k.fecha)+campo('monto','Monto $ (con IVA)','number',k.monto)+campo('concepto','Qué se compró','text',k.concepto||'')+campo('proveedor','Proveedor / tienda','text',k.proveedor||'')+opcionesMaterial(k.material)+campo('ref','Ticket / nota de venta','text',k.ref||'')
+  hoja(id?'Editar compra':'Nueva compra', campo('fecha','Fecha','date',k.fecha)+campo('monto','Monto $ (con IVA)','number',k.monto)+campo('concepto','Qué se compró','text',k.concepto||'')+opcionesPaga(c,k.paga)+campo('proveedor','Proveedor / tienda','text',k.proveedor||'')+opcionesMaterial(k.material)+campo('ref','Ticket / nota de venta','text',k.ref||'')
     +'<div class="acciones">'+(id?'<button class="btn peligro" onclick="borrarCompra(\''+id+'\')">Borrar</button>':'<button class="btn sec" onclick="cerrarHoja()">Cancelar</button>')+'<button onclick="guardarCompra(\''+(id||'')+'\')">Guardar</button></div>');
   if(!id) $('f_monto').focus();
 }
 function guardarCompra(id){
-  const f=leerForm(['fecha','monto','concepto','proveedor','material','ref']); const m=numero(f.monto);
+  const f=leerForm(['fecha','monto','concepto','paga','proveedor','material','ref']); const m=numero(f.monto);
   if(!f.fecha||isNaN(m)||m<=0){ alert('Escribe fecha y un monto mayor que cero.'); return; }
   if(!f.concepto.trim()&&!f.proveedor.trim()){ alert('Escribe qué se compró o el proveedor.'); return; }
   const base=id?S.docs['7'][id]:{};
-  escribir(7,Object.assign({},base,{ fecha:f.fecha, monto:m, concepto:f.concepto.trim(), proveedor:f.proveedor.trim(), material:f.material, ref:f.ref.trim() })); cerrarHoja();
+  escribir(7,Object.assign({},base,{ fecha:f.fecha, monto:m, concepto:f.concepto.trim(), paga:f.paga, proveedor:f.proveedor.trim(), material:f.material, ref:f.ref.trim() })); cerrarHoja();
 }
 function borrarCompra(id){ if(!confirm('¿Borrar esta compra?')) return; borrar(7,id); cerrarHoja(); }
 
@@ -456,22 +490,23 @@ function vistaPagos(c){
   let h='<div class="cifras"><div class="cifra"><b>'+dinero(c.pagado)+'</b><span>Pagado a Miguel</span></div><div class="cifra '+(c.porPagar<-0.5?'neg':'')+'"><b>'+dinero(c.porPagar)+'</b><span>Por pagar</span></div></div>';
   h+=c.alertas.filter(a=>a.nivel==='rojo').map(a=>'<div class="alerta rojo">'+esc(a.texto)+'</div>').join('');
   h+='<div style="margin:12px 0"><button onclick="formPago()">Nuevo pago</button></div>';
-  h+='<div class="tarjeta"><h2>Pagos al contratista · anticipo '+dinero(c.anticipoPagado)+'</h2>'+(pagos.length?pagos.map(p=>'<div class="fila" onclick="formPago(\''+p.id+'\')"><div class="txt">'+esc(p.concepto||nombreRubroCorto(c,p.rubro))+'<small>'+esc(fechaCorta(p.fecha))+' · '+esc(nombreRubroCorto(c,p.rubro))+(p.ref?' · '+esc(p.ref):'')+' · '+esc(p.por)+'</small></div><div class="num">'+dinero(p.monto)+'</div></div>').join(''):'<div class="vacio">Sin pagos</div>')+'</div>';
+  h+='<div class="tarjeta"><h2>Pagos al contratista · anticipo '+dinero(c.anticipoPagado)+'</h2>'+(pagos.length?pagos.map(p=>'<div class="fila" onclick="formPago(\''+p.id+'\')"><div class="txt">'+esc(p.concepto||nombreRubroCorto(c,p.rubro))+'<small>'+esc(fechaCorta(p.fecha))+' · '+esc(nombreRubroCorto(c,p.rubro))+(p.ref?' · '+esc(p.ref):'')+' · capturó '+esc(p.por)+'</small></div><div class="num">'+dinero(p.monto)+quienPaga(p)+'</div></div>').join(''):'<div class="vacio">Sin pagos</div>')+'</div>';
+  h+=resumenBolsas(c,'mo');
   return h;
 }
 function opcionesRubro(c,sel){ return '<label>Aplica a</label><select id="f_rubro">'+[['anticipo','Anticipo'],['otro','Otro']].concat(c.rubros.map(r=>[r.id,r.n+'. '+r.nombre])).map(([v,n])=>'<option value="'+v+'"'+(v===sel?' selected':'')+'>'+esc(n)+'</option>').join('')+'</select>'; }
 function formPago(id){
-  const c=calcular(S.docs); const p=id?S.docs['3'][id]:{ fecha:hoyISO(), rubro:'anticipo', concepto:'', monto:'', ref:'' };
+  const c=calcular(S.docs); const p=id?S.docs['3'][id]:{ fecha:hoyISO(), rubro:'anticipo', concepto:'', monto:'', ref:'', paga:'' };
   if(!p) return;
-  hoja(id?'Editar pago':'Nuevo pago', campo('fecha','Fecha','date',p.fecha)+campo('monto','Monto $','number',p.monto)+opcionesRubro(c,p.rubro)+campo('concepto','Concepto','text',p.concepto||'')+campo('ref','Referencia / comprobante','text',p.ref||'')
+  hoja(id?'Editar pago':'Nuevo pago', campo('fecha','Fecha','date',p.fecha)+campo('monto','Monto $','number',p.monto)+opcionesPaga(c,p.paga)+opcionesRubro(c,p.rubro)+campo('concepto','Concepto','text',p.concepto||'')+campo('ref','Referencia / comprobante','text',p.ref||'')
     +'<div class="acciones">'+(id?'<button class="btn peligro" onclick="borrarPago(\''+id+'\')">Borrar</button>':'<button class="btn sec" onclick="cerrarHoja()">Cancelar</button>')+'<button onclick="guardarPago(\''+(id||'')+'\')">Guardar</button></div>');
   if(!id) $('f_monto').focus();
 }
 function guardarPago(id){
-  const f=leerForm(['fecha','monto','rubro','concepto','ref']); const m=numero(f.monto);
+  const f=leerForm(['fecha','monto','paga','rubro','concepto','ref']); const m=numero(f.monto);
   if(!f.fecha||isNaN(m)||m<=0){ alert('Escribe fecha y un monto mayor que cero.'); return; }
   const base=id?S.docs['3'][id]:{};
-  escribir(3,Object.assign({},base,{ fecha:f.fecha, monto:m, rubro:f.rubro, concepto:f.concepto.trim(), ref:f.ref.trim() })); cerrarHoja();
+  escribir(3,Object.assign({},base,{ fecha:f.fecha, monto:m, paga:f.paga, rubro:f.rubro, concepto:f.concepto.trim(), ref:f.ref.trim() })); cerrarHoja();
 }
 function borrarPago(id){ if(!confirm('¿Borrar este pago?')) return; borrar(3,id); cerrarHoja(); }
 
@@ -557,15 +592,17 @@ function vistaAjustes(c){
   return '<div class="tarjeta"><h2>Este teléfono</h2><div class="fila" style="cursor:default"><div class="txt">Yo soy<small>'+esc(S.yo||'—')+'</small></div><button class="btn chico sec" onclick="mostrarClave()">Cambiar</button></div>'
     +'<div class="fila" style="cursor:default"><div class="txt">Clave de la obra<small>sala '+esc((S.sala||'').slice(0,11))+'… · si Denise ve la misma, están conectados</small></div><button class="btn chico sec" onclick="mostrarClave()">Cambiar</button></div>'
     +'<div class="fila" style="cursor:default"><div class="txt">Sincronización<small>'+esc(estadoSync.estado)+(S.cola.length?' · '+S.cola.length+' por subir':'')+(hora?' · última '+hora:'')+'</small></div><button class="btn chico sec" onclick="sync().then(render)">Sincronizar</button></div></div>'
-    +'<div class="tarjeta"><h2>Parámetros del contrato</h2>'+campo('anticipoMax','Anticipo máximo %','number',Math.round(c.cfg.anticipoMax*100))+campo('retencion','Retención %','number',Math.round(c.cfg.retencion*100))+campo('contratista','Contratista','text',c.cfg.contratista||'')+'<div class="acciones"><button onclick="guardarAjustes()">Guardar parámetros</button></div></div>'
+    +'<div class="tarjeta"><h2>Parámetros del contrato</h2>'+campo('anticipoMax','Anticipo máximo %','number',Math.round(c.cfg.anticipoMax*100))+campo('retencion','Retención %','number',Math.round(c.cfg.retencion*100))+campo('contratista','Contratista','text',c.cfg.contratista||'')+campo('pagadores','Quiénes desembolsan (separados por coma)','text',c.pagadores.join(', '))+'<div class="acciones"><button onclick="guardarAjustes()">Guardar parámetros</button></div></div>'
     +'<div class="tarjeta"><h2>Respaldo</h2><div class="acciones"><button class="btn sec" onclick="exportarRespaldo()">Copiar respaldo JSON</button></div></div>'
     +'<div class="vacio">Obra Villa Popolo 17 · versión '+VERSION+'</div>';
 }
 function guardarAjustes(){
-  const f=leerForm(['anticipoMax','retencion','contratista']); const a=numero(f.anticipoMax), r=numero(f.retencion);
+  const f=leerForm(['anticipoMax','retencion','contratista','pagadores']); const a=numero(f.anticipoMax), r=numero(f.retencion);
   if(isNaN(a)||isNaN(r)||a<0||a>100||r<0||r>100){ alert('Porcentajes entre 0 y 100.'); return; }
+  const lista=f.pagadores.split(',').map(s=>s.trim()).filter(Boolean);
+  if(!lista.length){ alert('Escribe al menos un nombre de quien desembolsa.'); return; }
   const cfg=Object.assign({},CFG_DEFAULT,(S.docs['0']||{}).cfg||{});
-  escribir(0,Object.assign(cfg,{ id:'cfg', anticipoMax:a/100, retencion:r/100, contratista:f.contratista.trim() }));
+  escribir(0,Object.assign(cfg,{ id:'cfg', anticipoMax:a/100, retencion:r/100, contratista:f.contratista.trim(), pagadores:lista }));
   alert('Parámetros guardados.');
 }
 function exportarRespaldo(){
