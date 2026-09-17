@@ -78,6 +78,18 @@
   .muestra{display:inline-block;width:11px;height:11px;border-radius:3px;
            border:1px solid rgba(0,0,0,.18);margin-right:7px;vertical-align:-1px}
   .nada{color:var(--suave)}
+  /* el precio más bajo de cada rubro, para que salte a la vista */
+  .barato{font-weight:600;color:var(--acento)}
+  td input.pu{width:74px;padding:6px 8px;border:1px solid var(--linea);border-radius:8px;
+                  font:inherit;font-size:12px;text-align:right;background:var(--papel);
+                  font-variant-numeric:tabular-nums}
+  /* Con tres o más columnas la tabla se sale de un teléfono: anchos fijos y
+     el nombre del rubro parte renglón en vez de empujar. */
+  table.comparar{table-layout:fixed}
+  table.comparar td:first-child,table.comparar th:first-child{width:42%;overflow-wrap:anywhere}
+  table.cotiza td:last-child{white-space:normal}
+  .interruptor{display:flex;align-items:center;gap:9px;font-size:12.5px;margin-top:4px}
+  .interruptor input{width:18px;height:18px;accent-color:var(--acento)}
   .escoger{margin-top:12px;border-top:1px solid var(--linea);padding-top:10px}
   /* Anchos fijos: si no, un nombre largo empuja la tabla y desborda la página. */
   .escoger table{table-layout:fixed}
@@ -219,7 +231,8 @@ const TIPOS_BASE = [
 ]
 const vacio = () => ({ piso:{}, nombre:{}, precio:{}, mo:{}, merma:10, hecho:{}, trabajo:{},
                        gastos:{}, notas:{}, cfg:{}, abierto:false,
-                       rubros:{}, avances:{}, materiales:{}, dudas:{} })
+                       rubros:{}, avances:{}, materiales:{}, dudas:{},
+                       candidatos:{}, cotiza:{} })
 /* ------------------------------------------------------------------
    Hechos. Un hecho es {k, v, t}: llave, valor y sello. Gana el sello mayor.
    Es la ÚNICA puerta por la que entra dato — lo que tecleas aquí y lo que
@@ -269,6 +282,14 @@ function desdeHechos () {
     else if (cual === 'v:') n.avances[resto] = v
     else if (cual === 't:') n.materiales[resto] = v
     else if (cual === 'd:') n.dudas[resto] = v
+    else if (cual === 'k:') n.candidatos[resto] = v
+    else if (cual === 'z:') {
+      /* `z:c1r09` es el precio del rubro r09 según el candidato c1. Se parte
+         por el id del candidato, que siempre es c + número, para que el resto
+         sea el rubro entero por largo que sea. */
+      const m = resto.match(/^(c\d+)(.+)$/)
+      if (m) (n.cotiza[m[1]] = n.cotiza[m[1]] || {})[m[2]] = v
+    }
   }
   n.abierto = S.abierto
   S = n
@@ -405,6 +426,9 @@ const nombreDe = (e) => S.nombre[llave(e)] || e.nombre
 const tipoPorId = Object.fromEntries(TIPOS_BASE.map(t => [t.id, t]))
 const nMetros = (n) => n.toLocaleString('es-MX', { maximumFractionDigits:1 })
 const nPesos  = (n) => '$' + Math.round(n).toLocaleString('es-MX')
+/* Para tablas apretadas: 229,960 se vuelve 230 mil y no rompe la columna. */
+const nMiles  = (n) => Math.abs(n) >= 10000
+  ? Math.round(n/1000).toLocaleString('es-MX') + ' mil' : nPesos(n)
 const muestraDe = (t) => t.css || t.color
 
 /* ------------------------------------------------------------------
@@ -1066,7 +1090,8 @@ function dibujaGastos () {
    El alcance (lo que hay que hacer), los materiales estimados y las dudas
    que quedaron abiertas de la cotización vieja.                        */
 let subMas = 'menu'
-const MENU = [['alcance','Alcance de la obra'],['materiales','Materiales estimados'],
+const MENU = [['alcance','Alcance de la obra'],['candidatos','Candidatos y cotizaciones'],
+              ['materiales','Materiales estimados'],
               ['pendientes','Dudas por aclarar'],['ajustes','Ajustes']]
 
 function dibujaMas () {
@@ -1080,11 +1105,17 @@ function dibujaMas () {
     })
     return
   }
-  const atras = `<a href="#" id="atras" class="atras">‹ Más</a>`
-  n.innerHTML = atras + ({ alcance:vistaAlcance, materiales:vistaMateriales,
+  /* La ficha del candidato trae su propia liga de regreso; sin esto salen las
+     dos pegadas («‹ Más‹ Candidatos»). */
+  const atras = (subMas === 'candidatos' && candActivo) ? ''
+    : `<a href="#" id="atras" class="atras">‹ Más</a>`
+  n.innerHTML = atras + ({ alcance:vistaAlcance, candidatos:vistaCandidatos,
+                           materiales:vistaMateriales,
                            pendientes:vistaDudas, ajustes:vistaAjustes }[subMas])()
-  document.getElementById('atras').onclick = (ev) => { ev.preventDefault(); subMas = 'menu'; dibujaMas() }
+  const volver = document.getElementById('atras')
+  if (volver) volver.onclick = (ev) => { ev.preventDefault(); subMas = 'menu'; dibujaMas() }
   if (subMas === 'ajustes') enganchaAjustes()
+  if (subMas === 'candidatos') enganchaCandidatos()
   if (subMas === 'pendientes') n.querySelectorAll('[data-duda]').forEach(b => b.onclick = () => {
     const id = b.dataset.duda, d = S.dudas[id]
     pon('d:' + id, { ...d, estatus: d.estatus === 'abierto' ? 'cerrado' : 'abierto' })
@@ -1111,10 +1142,10 @@ function vistaAlcance () {
           <td>${nPesos(c)}</td></tr>`
       }).join('')}
     </table></div>`).join('')
-  /* Los dos rubros grandes donde el plano tiene su propia medida. */
-  const mio = { 9: 963.6, 6: 649.6 }
-  const contraste = rubros.filter(r => mio[r.n]).map(r =>
-    `<tr><td>${r.nombre.slice(0, 40)}</td><td>${nMetros(r.cant)}</td><td>${nMetros(mio[r.n])}</td></tr>`).join('')
+  /* El total de arriba se queda con SUS cantidades: es lo que él pedía, tal
+     como lo escribió. Lo que mide el plano va al lado, para contrastar. */
+  const contraste = rubros.filter(r => MEDIDO[r.n]).map(r =>
+    `<tr><td>${r.nombre.slice(0, 40)}</td><td>${nMetros(r.cant)}</td><td>${nMetros(MEDIDO[r.n])}</td></tr>`).join('')
   return `<div class="tarjeta">
       <h2>Lo que pedía Guzmán</h2>
       <table><tr class="total"><td>Los ${rubros.length} rubros</td><td>${nPesos(total)}</td></tr></table>
@@ -1165,6 +1196,206 @@ function vistaDudas () {
       <button class="btn" data-duda="${d.id}">${
         d.estatus === 'abierto' ? 'Marcar como aclarada' : 'Volver a abrir'}</button>
     </div>`).join('')
+}
+
+/* ------------------------------------------------------------------
+   Candidatos y cotizaciones.
+
+   El alcance (los rubros) es de la casa; los precios son de cada quien. Por
+   eso el rubro guarda cantidad y unidad, y lo que cobra cada contratista vive
+   aparte, en `z:<candidato><rubro>`. Guzmán no se captura: su columna se
+   arma sola sumando el material y la obra que traía su cotización, y no se
+   deja editar — ya no está, es sólo la vara para medir a los que vienen.   */
+
+/* Lo que el plano mide de esos rubros, contra lo que decía el contrato: el
+   alisado de muros (268 m² cotizados) y la pintura (730 m²). Encender el
+   interruptor cotiza sobre la casa de verdad y no sobre su medición corta. */
+const MEDIDO = { 6: 649.6, 9: 963.6 }
+const conPlano = () => !!S.cfg.plano
+
+function cantidadRubro (r) {
+  if (!r) return 0
+  return (conPlano() && MEDIDO[r.n]) ? MEDIDO[r.n] : (+r.cant || 0)
+}
+const rubrosPorN = () => Object.entries(S.rubros || {}).map(([id, r]) => ({ id, ...r }))
+  .sort((a, b) => (a.n || 0) - (b.n || 0))
+
+const llaveCotiza = (cid, rid) => 'z:' + cid + rid
+
+function candidatos () {
+  const guz = { id:'guz', ref:true, nombre:'Guzmán', nota:'La cotización que ya no corre', precios:{} }
+  for (const r of rubrosPorN()) {
+    const pu = (+r.matU || 0) + (+r.moU || 0)
+    if (pu) guz.precios[r.id] = pu
+  }
+  const mios = Object.entries(S.candidatos || {})
+    .filter(([, c]) => c)
+    .map(([id, c]) => ({ id, ref:false, nombre:c.nombre || 'Sin nombre', tel:c.tel || '',
+                         nota:c.nota || '', precios:(S.cotiza || {})[id] || {} }))
+    .sort((a, b) => (+a.id.slice(1) || 0) - (+b.id.slice(1) || 0))
+  return (Object.keys(guz.precios).length ? [guz] : []).concat(mios)
+}
+const totalCandidato = (c) => rubrosPorN()
+  .reduce((a, r) => a + cantidadRubro(r) * (+c.precios[r.id] || 0), 0)
+
+function altaCandidato (nombre) {
+  let n = 1; while (S.candidatos['c' + n]) n++
+  const id = 'c' + n
+  pon('k:' + id, { nombre:(nombre || '').trim() || 'Sin nombre' })
+  return id
+}
+/* Se va con todo y precios: si se quedaran, un candidato nuevo podría heredar
+   el id y con él las cifras del anterior. */
+function bajaCandidato (id) {
+  for (const rid in ((S.cotiza || {})[id] || {})) pon(llaveCotiza(id, rid), null)
+  pon('k:' + id, null)
+}
+
+let candActivo = null
+
+function vistaCandidatos () {
+  /* Guzmán no está en S.candidatos —se arma solo—, así que se pregunta por la
+     lista ya armada; si no, tocarlo en la lista no abría nada. */
+  if (candActivo && candidatos().some(c => c.id === candActivo)) return vistaFicha(candActivo)
+  candActivo = null
+  const rubros = rubrosPorN()
+  if (!rubros.length) return `<div class="tarjeta"><p class="guia">Primero tienen que
+    llegar los rubros del alcance.</p></div>`
+  const cs = candidatos()
+  const ref = cs.find(c => c.ref)
+  const tRef = ref ? totalCandidato(ref) : 0
+
+  const filas = cs.map(c => {
+    const t = totalCandidato(c)
+    const dif = (tRef && !c.ref && t) ? Math.round((t / tRef - 1) * 100) : null
+    return `<tr><td><a href="#" data-cand="${c.id}">${c.nombre}</a>${
+      c.ref ? '<br><span class="nada">la vara, no se edita</span>' : ''}</td>
+      <td>${t ? nPesos(t) : '<span class="nada">sin cotizar</span>'}${
+        dif === null ? '' : `<br><span class="${dif < 0 ? 'barato' : 'nada'}">${
+        dif > 0 ? '+' : ''}${dif}% vs. Guzmán</span>`}</td></tr>`
+  }).join('')
+
+  return `<div class="tarjeta">
+      <h2>Cotizaciones · ${rubros.length} rubros</h2>
+      <table class="cotiza"><tr><th>Quién</th><th>Total</th></tr>${filas}</table>
+      <label class="interruptor" style="margin-top:12px">
+        <input type="checkbox" id="cand-plano"${conPlano() ? ' checked' : ''}>
+        Cotizar con las cantidades del plano</label>
+      <p class="guia">${conPlano()
+        ? 'Los rubros que el plano mide van con su medida: alisado 649.6 m² y pintura 963.6 m².'
+        : 'Van las cantidades del contrato viejo. Ojo: él cotizó 730 m² de pintura y el plano mide 963.6.'}</p>
+    </div>
+    <div class="tarjeta">
+      <h2>Agregar candidato</h2>
+      <label class="campo">Nombre <input id="cand-nombre" placeholder="Albañil, constructora…"></label>
+      <button class="btn fuerte" id="cand-nuevo" style="margin-top:10px">Agregar</button>
+      <p class="guia">Luego le capturas su precio por rubro y la app lo compara.</p>
+    </div>` + vistaComparar(cs, rubros)
+}
+
+/* La comparación sólo dice algo cuando hay con quién comparar. */
+function vistaComparar (cs, rubros) {
+  const conPrecio = cs.filter(c => Object.keys(c.precios).length)
+  if (conPrecio.length < 2) return ''
+  const filas = rubros.map(r => {
+    const precios = conPrecio.map(c => +c.precios[r.id] || 0)
+    const min = Math.min(...precios.filter(x => x > 0))
+    return `<tr data-fila="${r.id}">
+      <td>${r.nombre.slice(0, 34)}<br><span class="nada">${nMetros(cantidadRubro(r))} ${r.unidad || ''}</span></td>
+      ${conPrecio.map((c, i) => `<td${precios[i] && precios[i] === min ? ` class="barato" data-de="${c.id}"` : ''}>${
+        precios[i] ? nMetros(precios[i]) : '<span class="nada">—</span>'}</td>`).join('')}</tr>`
+  }).join('')
+  const totales = conPrecio.map(c => totalCandidato(c))
+  const menor = Math.min(...totales.filter(x => x > 0))
+  return `<div class="tarjeta">
+      <h2>Rubro por rubro</h2>
+      <table class="comparar">
+        <tr><th>Rubro</th>${conPrecio.map(c => { const n = c.nombre.split(' ')[0]
+          return `<th>${n.length > 9 ? n.slice(0, 8) + '.' : n}</th>` }).join('')}</tr>
+        ${filas}
+        <tr class="total"><td>Total</td>${totales.map((t, i) =>
+          `<td${t && t === menor ? ' class="barato"' : ''}>${nMiles(t)}</td>`).join('')}</tr>
+      </table>
+      <p class="guia">Pesos por unidad de cada quien, y abajo el total; en negritas
+      el más barato de cada renglón. Barato por rubro no es barato en total — mira las dos cosas.</p>
+    </div>`
+}
+
+function vistaFicha (cid) {
+  const c = candidatos().find(x => x.id === cid)
+  if (!c) { candActivo = null; return vistaCandidatos() }
+  const ref = candidatos().find(x => x.ref)
+  const etapas = {}
+  for (const r of rubrosPorN()) (etapas[r.etapa || 'Sin etapa'] = etapas[r.etapa || 'Sin etapa'] || []).push(r)
+  const bloques = Object.entries(etapas).map(([et, rs]) => `
+    <div class="tarjeta"><h2>${et}</h2><table>
+      ${rs.map(r => {
+        const suyo = +c.precios[r.id] || 0
+        const deRef = c.ref ? 0 : (ref && +ref.precios[r.id] || 0)   // en su propia ficha sobra
+        return `<tr><td>${r.nombre}<br><span class="nada">${nMetros(cantidadRubro(r))} ${r.unidad || ''}${
+          deRef ? ` · Guzmán ${nPesos(deRef)}` : ''}</span></td>
+          <td>${c.ref ? nPesos(suyo)
+            : `<input class="pu" type="number" inputmode="decimal" step="any" min="0"
+                 data-cotiza="${r.id}" value="${suyo || ''}" placeholder="0">`}</td>
+          <td>${suyo ? nPesos(suyo * cantidadRubro(r)) : '<span class="nada">—</span>'}</td></tr>`
+      }).join('')}
+    </table></div>`).join('')
+
+  return `<a href="#" id="cand-atras" class="atras">‹ Candidatos</a>
+    <div class="tarjeta">
+      <h2>${c.nombre}</h2>
+      ${c.ref ? `<p class="guia">Es la cotización de Guzmán, la que ya no corre. No se
+        edita: sirve de vara. Sus precios traen material y mano de obra juntos.</p>`
+      : `<label class="campo">Nombre <input data-campo="nombre" value="${c.nombre}"></label>
+         <label class="campo">Teléfono <input data-campo="tel" value="${c.tel}"></label>
+         <label class="campo">Nota <input data-campo="nota" value="${c.nota}" placeholder="quién lo recomendó, qué prometió…"></label>`}
+      <table style="margin-top:10px"><tr class="total"><td>Total</td>
+        <td id="cand-total">${nPesos(totalCandidato(c))}</td></tr></table>
+      <p class="guia">Precio por unidad, con material incluido. ${
+        conPlano() ? 'Cantidades del plano.' : 'Cantidades del contrato viejo.'}</p>
+    </div>` + bloques + (c.ref ? '' : `
+    <div class="tarjeta">
+      <button class="btn" data-borra="${c.id}">Quitar a ${c.nombre}</button>
+      <p class="guia">Se va con sus precios. El alcance no se toca.</p>
+    </div>`)
+}
+
+function enganchaCandidatos () {
+  const n = document.getElementById('mas')
+  const nuevo = document.getElementById('cand-nuevo')
+  if (nuevo) nuevo.onclick = () => {
+    const campo = document.getElementById('cand-nombre')
+    candActivo = altaCandidato(campo.value); campo.value = ''; dibujaMas()
+  }
+  const plano = document.getElementById('cand-plano')
+  if (plano) plano.onchange = () => { pon('c:plano', plano.checked); dibujaMas() }
+  n.querySelectorAll('[data-cand]').forEach(a => a.onclick = (ev) => {
+    ev.preventDefault(); candActivo = a.dataset.cand; dibujaMas()
+  })
+  const atras = document.getElementById('cand-atras')
+  if (atras) atras.onclick = (ev) => { ev.preventDefault(); candActivo = null; dibujaMas() }
+  n.querySelectorAll('[data-borra]').forEach(b => b.onclick = () => {
+    bajaCandidato(b.dataset.borra); candActivo = null; dibujaMas()
+  })
+  n.querySelectorAll('[data-campo]').forEach(i => i.onchange = () => {
+    const c = S.candidatos[candActivo] || {}
+    pon('k:' + candActivo, { ...c, [i.dataset.campo]:i.value.trim() })
+  })
+  /* Al salir del campo se guarda; mientras teclea sólo se recalcula el total,
+     para no mandar un hecho por cada tecla. */
+  n.querySelectorAll('[data-cotiza]').forEach(i => {
+    i.onchange = () => {
+      const v = parseFloat(i.value)
+      pon(llaveCotiza(candActivo, i.dataset.cotiza), v > 0 ? v : null)
+      dibujaMas()
+    }
+    i.oninput = () => {
+      const c = candidatos().find(x => x.id === candActivo); if (!c) return
+      const precios = { ...c.precios, [i.dataset.cotiza]:parseFloat(i.value) || 0 }
+      const t = rubrosPorN().reduce((a, r) => a + cantidadRubro(r) * (+precios[r.id] || 0), 0)
+      const caja = document.getElementById('cand-total'); if (caja) caja.textContent = nPesos(t)
+    }
+  })
 }
 
 /* ------------------------------------------------------------------
