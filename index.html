@@ -45,10 +45,19 @@
   .menu a:first-child{border-top:0}
   .menu a span{color:var(--suave)}
   .atras{display:inline-block;margin-bottom:10px;color:var(--acento);text-decoration:none;font-size:13px}
-  nav{display:flex;gap:2px;margin-top:10px}
-  nav button{flex:1;padding:9px 2px;border:0;background:none;font:inherit;font-size:11.5px;
-             color:var(--suave);border-bottom:2px solid transparent;cursor:pointer}
-  nav button[aria-selected="true"]{color:var(--tinta);font-weight:600;border-bottom-color:var(--acento)}
+  /* Pestañas: la activa va RELLENA, no sólo subrayada. La rayita de 2 px no se
+     veía en el teléfono y uno no sabía en qué pantalla estaba. Ya no son cinco
+     columnas iguales: cada pastilla mide lo que dice y la fila rueda si no cabe,
+     así ninguna etiqueta se aplasta. */
+  nav{display:flex;gap:4px;margin-top:10px;padding-bottom:8px;
+      overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  nav::-webkit-scrollbar{display:none}
+  nav button{flex:0 0 auto;padding:8px 12px;border:0;border-radius:9px;background:none;
+             font:inherit;font-size:12.5px;line-height:1.15;color:var(--suave);
+             white-space:nowrap;cursor:pointer}
+  nav button[aria-selected="true"]{background:var(--acento);color:#fff;font-weight:600}
+  /* Los dos niveles del plano son una cosa; Resumen, Gastos y Más son otra. */
+  nav .aparte{flex:0 0 auto;align-self:stretch;width:1px;margin:4px 5px;background:var(--linea)}
 
   main{flex:1;position:relative;overflow:hidden}
   #resumen{overflow-x:hidden}
@@ -155,19 +164,20 @@
 <body>
 <header>
   <h1>Villa Popolo <span id="estado" class="estado"></span></h1>
-  <nav id="pestanas">
-    <button data-vista="pb" aria-selected="true">Planta baja</button>
-    <button data-vista="n1" aria-selected="false">Primer nivel</button>
-    <button data-vista="resumen" aria-selected="false">Resumen</button>
-    <button data-vista="gastos" aria-selected="false">Gastos</button>
-    <button data-vista="mas" aria-selected="false">Más</button>
+  <nav id="pestanas" role="tablist" aria-label="Pantallas">
+    <button role="tab" data-vista="pb" aria-controls="vista-mapa" aria-selected="true">Abajo</button>
+    <button role="tab" data-vista="n1" aria-controls="vista-mapa" aria-selected="false">Arriba</button>
+    <span class="aparte" aria-hidden="true"></span>
+    <button role="tab" data-vista="resumen" aria-controls="resumen" aria-selected="false">Resumen</button>
+    <button role="tab" data-vista="gastos" aria-controls="gastos" aria-selected="false">Gastos</button>
+    <button role="tab" data-vista="mas" aria-controls="mas" aria-selected="false">Más</button>
   </nav>
 </header>
 
 <main>
   <div class="vista activa" id="vista-mapa">
     <canvas id="lienzo"></canvas>
-    <div class="aviso" id="aviso">Toca un espacio para darle piso.</div>
+    <div class="aviso" id="aviso"></div>
     <div class="flotante">
       <button id="acercar" title="Acercar">+</button>
       <button id="menos" title="Alejar">−</button>
@@ -1635,10 +1645,24 @@ function refrescaTodo () {
 
 /* ------------------------------------------------------------------
    Pestañas                                                           */
+const NIVELES = { pb: 'Planta baja', n1: 'Primer nivel' }
+function avisaNivel (cual) {
+  const av = document.getElementById('aviso'); if (!av) return
+  av.innerHTML = `<b>${NIVELES[cual || nivelActivo]}</b> · toca un espacio para darle piso.`
+}
+
 function muestra (cual) {
   const nav = document.getElementById('pestanas')
-  ;[...nav.children].forEach(x => x.setAttribute('aria-selected', x.dataset.vista === cual))
+  /* Los botones, no todos los hijos: el separador de grupos no es una pestaña. */
+  nav.querySelectorAll('button').forEach(x => {
+    const suya = x.dataset.vista === cual
+    x.setAttribute('aria-selected', suya)
+    x.tabIndex = suya ? 0 : -1
+  })
+  const activa = nav.querySelector('[aria-selected="true"]')
+  if (activa) activa.scrollIntoView({ block:'nearest', inline:'nearest' })
   const esMapa = cual === 'pb' || cual === 'n1'
+  if (esMapa) avisaNivel(cual)
   /* Por id, no por [data-vista]: ese atributo lo llevan también las pestañas. */
   document.getElementById('vista-mapa').classList.toggle('activa', esMapa)
   for (const v of ['resumen', 'gastos', 'mas'])
@@ -1672,6 +1696,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
 if (T.clave) { T.sala = salaDe(T.clave); sync.estado = 'conectando'; programarSync(400) }
 pintaEstado()
 
+avisaNivel()
 cargaNivel('pb'); cargaNivel('n1')
 const cuandoCargue = setInterval(() => {
   if (!niveles.pb.listo || !niveles.n1.listo) return
