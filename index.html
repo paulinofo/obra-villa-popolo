@@ -1123,6 +1123,85 @@ function dibujaMas () {
   })
 }
 
+/* ------------------------------------------------------------------
+   El estimado de obra: todo lo que se sabe, sumado en un renglón.
+
+   Nadie ha cotizado la casa todavía, así que esto NO es un presupuesto: es
+   el alcance a precios de la cotización vieja, más lo que el mapa ya sabe
+   del piso, más el material que compras tú. Cada renglón dice de dónde sale
+   y los supuestos van marcados como tales.                              */
+
+/* Nadie ha cotizado poner el laminado. A falta de número, el de mercado. */
+const INSTALA_LAMINADO = 100          // $/m², supuesto
+
+function estimado () {
+  const merma = 1 + (+S.merma || 0) / 100
+  const r = porTipo()
+  const rubros = rubrosPorN()
+
+  /* 1. Los rubros, con las cantidades que esté usando la app (contrato o plano). */
+  const alcance = rubros.reduce((a, x) =>
+    a + cantidadRubro(x) * ((+x.matU || 0) + (+x.moU || 0)), 0)
+
+  /* 2. El piso que escogiste en el mapa: material con merma, al precio que le
+        pusiste. Hoy sólo el laminado trae precio de tienda. */
+  let pisoMat = 0
+  for (const t of TIPOS_BASE) if (r[t.id]) pisoMat += r[t.id].m2 * merma * (+S.precio[t.id] || 0)
+
+  /* 3. Ponerlo. Si le pusiste mano de obra en el Resumen, se usa la tuya. */
+  const lam = r.laminado ? r.laminado.m2 : 0
+  const instala = lam * (+S.mo.laminado || INSTALA_LAMINADO)
+  const suponeInstala = !+S.mo.laminado && lam > 0
+
+  /* 4. El piso duro de adentro que el contrato no alcanzaba a cubrir: él
+        cotizó 140 m² y el mapa dice cuánto hay de verdad. */
+  const duro = ['porcelanato', 'loseta', 'marmol']
+  const r7 = rubros.find(x => x.n === 7)
+  let m2duro = 0
+  for (const e of espacios) if (e.techado && duro.includes(tipoDe(e))) m2duro += e.m2
+  const faltanM2 = r7 ? Math.max(0, m2duro - (+r7.cant || 0)) : 0
+  const pisoFalta = faltanM2 * (r7 ? (+r7.matU || 0) + (+r7.moU || 0) : 0)
+
+  /* 5. Lo que compras tú, y lo que ya compraste. */
+  const materiales = Object.values(S.materiales || {})
+    .reduce((a, m) => a + (+m.cant || 0) * (+m.puEst || 0), 0)
+  const comprado = Object.values(S.gastos || {})
+    .filter(g => g && g.tipo === 'compra').reduce((a, g) => a + (+g.monto || 0), 0)
+
+  const total = alcance + pisoMat + instala + pisoFalta + materiales - comprado
+  return { alcance, pisoMat, instala, suponeInstala, faltanM2, pisoFalta,
+           materiales, comprado, total, lam }
+}
+
+function vistaEstimado () {
+  const e = estimado()
+  if (!e.alcance && !e.pisoMat) return ''
+  const fila = (que, cuanto, de, signo) => !cuanto ? '' :
+    `<tr><td>${que}${de ? `<br><span class="nada">${de}</span>` : ''}</td>
+      <td>${signo === '-' ? '−' : ''}${nPesos(Math.abs(cuanto))}</td></tr>`
+  return `<div class="tarjeta">
+      <h2>Estimado de obra</h2>
+      <table>
+        ${fila('Los ' + rubrosPorN().length + ' rubros del alcance', e.alcance,
+               conPlano() ? 'a las cantidades del plano, precios de Guzmán'
+                          : 'cantidades y precios de la cotización de Guzmán')}
+        ${fila('Piso nuevo, material', e.pisoMat, `${nMetros(e.lam)} m² de laminado con merma`)}
+        ${fila('Ponerlo', e.instala, e.suponeInstala
+               ? `supuesto: $${INSTALA_LAMINADO}/m², nadie lo ha cotizado`
+               : 'a tu precio de mano de obra')}
+        ${fila('Piso duro que el contrato no cubría', e.pisoFalta,
+               `${nMetros(e.faltanM2)} m² de más que los 140 cotizados`)}
+        ${fila('Material que compras tú', e.materiales, 'la lista de materiales estimados')}
+        ${fila('Ya comprado', e.comprado, 'cemento, arena y grava', '-')}
+        <tr class="total"><td>Total sin cocina</td><td>${nPesos(e.total)}</td></tr>
+      </table>
+      <p class="guia"><b>No es un presupuesto</b>, es la vara: son los precios de
+      una cuadrilla que ya no está. La <b>cocina</b> de VIVANDI va aparte y sin
+      número. Y ojo: el pegazulejo de la lista de materiales puede estar ya
+      dentro del precio de colocación de loseta.</p>
+    </div>`
+}
+
 /* El alcance: lo que hay que hacer, con las cantidades y los precios que
    pedía Guzmán. Él ya no está, así que esos precios son sólo referencia —
    sirven para saber si el siguiente cotiza más caro o más barato. */
@@ -1146,7 +1225,7 @@ function vistaAlcance () {
      como lo escribió. Lo que mide el plano va al lado, para contrastar. */
   const contraste = rubros.filter(r => MEDIDO[r.n]).map(r =>
     `<tr><td>${r.nombre.slice(0, 40)}</td><td>${nMetros(r.cant)}</td><td>${nMetros(MEDIDO[r.n])}</td></tr>`).join('')
-  return `<div class="tarjeta">
+  return vistaEstimado() + `<div class="tarjeta">
       <h2>Lo que pedía Guzmán</h2>
       <table><tr class="total"><td>Los ${rubros.length} rubros</td><td>${nPesos(total)}</td></tr></table>
       <p class="guia">Corriste a esa cuadrilla, así que esto es sólo la vara para
