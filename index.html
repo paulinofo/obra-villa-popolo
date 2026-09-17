@@ -1134,14 +1134,23 @@ function dibujaMas () {
 /* Nadie ha cotizado poner el laminado. A falta de número, el de mercado. */
 const INSTALA_LAMINADO = 100          // $/m², supuesto
 
-function estimado () {
+function estimado (cid) {
   const merma = 1 + (+S.merma || 0) / 100
   const r = porTipo()
   const rubros = rubrosPorN()
+  const quien = candidatos().find(c => c.id === (cid || 'guz')) || { ref:true, mat:true, precios:{} }
 
-  /* 1. Los rubros, con las cantidades que esté usando la app (contrato o plano). */
-  const alcance = rubros.reduce((a, x) =>
-    a + cantidadRubro(x) * ((+x.matU || 0) + (+x.moU || 0)), 0)
+  /* 1. Los rubros, a los precios de quien sea, con las cantidades que esté
+        usando la app (contrato o plano). Sin decir de quién, los de Guzmán. */
+  const suyo = (x) => quien.ref ? (+x.matU || 0) + (+x.moU || 0) : (+quien.precios[x.id] || 0)
+  const alcance = rubros.reduce((a, x) => a + cantidadRubro(x) * suyo(x), 0)
+
+  /* 2. El que cotiza sólo mano de obra queda corto contra el que incluye
+        material: para poder compararlos se le presta el material de Guzmán,
+        y sólo de los rubros que él sí cotizó. Es referencia, no su precio. */
+  const soloObra = !quien.ref && quien.mat === false
+  const matRef = !soloObra ? 0 : rubros.reduce((a, x) =>
+    a + (suyo(x) ? cantidadRubro(x) * (+x.matU || 0) : 0), 0)
 
   /* 2. El piso que escogiste en el mapa: material con merma, al precio que le
         pusiste. Hoy sólo el laminado trae precio de tienda. */
@@ -1168,9 +1177,35 @@ function estimado () {
   const comprado = Object.values(S.gastos || {})
     .filter(g => g && g.tipo === 'compra').reduce((a, g) => a + (+g.monto || 0), 0)
 
-  const total = alcance + pisoMat + instala + pisoFalta + materiales - comprado
-  return { alcance, pisoMat, instala, suponeInstala, faltanM2, pisoFalta,
-           materiales, comprado, total, lam }
+  const total = alcance + matRef + pisoMat + instala + pisoFalta + materiales - comprado
+  return { quien, alcance, matRef, soloObra, pisoMat, instala, suponeInstala,
+           faltanM2, pisoFalta, materiales, comprado, total, lam }
+}
+
+/* Lo mismo, pero según quién cotice: es lo que sirve para decidir. */
+function vistaEstimadoQuien () {
+  const cs = candidatos().filter(c => Object.keys(c.precios).length)
+  if (cs.length < 2) return ''
+  const filas = cs.map(c => {
+    const e = estimado(c.id)
+    return { c, e }
+  })
+  const menor = Math.min(...filas.map(f => f.e.total))
+  const presta = filas.some(f => f.e.soloObra)
+  return `<table style="margin-top:14px">
+      <tr><th>Con quién</th><th>Alcance</th><th>Todo</th></tr>
+      ${filas.map(({ c, e }) => `<tr>
+        <td>${c.nombre}${e.soloObra
+          ? `<br><span class="nada">obra ${nMiles(e.alcance - 0)} + material ${nMiles(e.matRef)}</span>`
+          : '<br><span class="nada">con material</span>'}</td>
+        <td>${nPesos(e.alcance + e.matRef)}</td>
+        <td${e.total === menor ? ' class="barato"' : ''}>${nPesos(e.total)}</td></tr>`).join('')}
+    </table>
+    <p class="guia">${presta ? `Al que cotiza <b>sólo mano de obra</b> se le suma el
+      <b>material a precios de Guzmán</b>, y nada más de los rubros que él cotizó:
+      es la única forma de ponerlos lado a lado. ` : ''}Cada quien cotiza rubros
+    distintos, así que el más barato de abajo puede ser el que menos abarca —
+    míralo junto a Rubro por rubro, en Candidatos.</p>`
 }
 
 function vistaEstimado () {
@@ -1195,6 +1230,7 @@ function vistaEstimado () {
         ${fila('Ya comprado', e.comprado, 'cemento, arena y grava', '-')}
         <tr class="total"><td>Total sin cocina</td><td>${nPesos(e.total)}</td></tr>
       </table>
+      ${vistaEstimadoQuien()}
       <p class="guia"><b>No es un presupuesto</b>, es la vara: son los precios de
       una cuadrilla que ya no está. La <b>cocina</b> de VIVANDI va aparte y sin
       número. Y ojo: el pegazulejo de la lista de materiales puede estar ya
