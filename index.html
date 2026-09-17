@@ -1348,12 +1348,17 @@ function vistaCandidatos () {
 
   const filas = cs.map(c => {
     const t = totalCandidato(c)
-    const dif = (tRef && !c.ref && t) ? Math.round((t / tRef - 1) * 100) : null
+    /* Comparar un precio de sólo mano de obra contra uno con material da un
+       porcentaje que miente. Mejor decir que no se comparan. */
+    const mismaBase = ref && c.mat === ref.mat
+    const dif = (tRef && !c.ref && t && mismaBase) ? Math.round((t / tRef - 1) * 100) : null
+    const otra = !c.ref && t && !mismaBase
     return `<tr><td><a href="#" data-cand="${c.id}">${c.nombre}</a>${
       c.ref ? '<br><span class="nada">la vara, no se edita</span>'
             : (c.mat ? '' : '<br><span class="nada">sólo mano de obra</span>')}</td>
       <td>${t ? nPesos(t) : '<span class="nada">sin cotizar</span>'}${
-        dif === null ? '' : `<br><span class="${dif < 0 ? 'barato' : 'nada'}">${
+        otra ? '<br><span class="nada">otra base, no se compara</span>'
+        : dif === null ? '' : `<br><span class="${dif < 0 ? 'barato' : 'nada'}">${
         dif > 0 ? '+' : ''}${dif}% vs. Guzmán</span>`}</td></tr>`
   }).join('')
 
@@ -1381,7 +1386,8 @@ function vistaComparar (cs, rubros) {
   if (conPrecio.length < 2) return ''
   const filas = rubros.map(r => {
     const precios = conPrecio.map(c => +c.precios[r.id] || 0)
-    const min = Math.min(...precios.filter(x => x > 0))
+    const hay = precios.filter(x => x > 0)
+    const min = hay.length > 1 ? Math.min(...hay) : 0   // solo uno no es el más barato
     return `<tr data-fila="${r.id}">
       <td>${r.nombre.slice(0, 34)}<br><span class="nada">${nMetros(cantidadRubro(r))} ${r.unidad || ''}</span></td>
       ${conPrecio.map((c, i) => `<td${precios[i] && precios[i] === min ? ` class="barato" data-de="${c.id}"` : ''}>${
