@@ -1302,7 +1302,8 @@ const rubrosPorN = () => Object.entries(S.rubros || {}).map(([id, r]) => ({ id, 
 const llaveCotiza = (cid, rid) => 'z:' + cid + rid
 
 function candidatos () {
-  const guz = { id:'guz', ref:true, nombre:'Guzmán', nota:'La cotización que ya no corre', precios:{} }
+  const guz = { id:'guz', ref:true, nombre:'Guzmán', mat:true,
+                nota:'La cotización que ya no corre', precios:{} }
   for (const r of rubrosPorN()) {
     const pu = (+r.matU || 0) + (+r.moU || 0)
     if (pu) guz.precios[r.id] = pu
@@ -1310,7 +1311,8 @@ function candidatos () {
   const mios = Object.entries(S.candidatos || {})
     .filter(([, c]) => c)
     .map(([id, c]) => ({ id, ref:false, nombre:c.nombre || 'Sin nombre', tel:c.tel || '',
-                         nota:c.nota || '', precios:(S.cotiza || {})[id] || {} }))
+                         nota:c.nota || '', mat:c.mat !== false,
+                         precios:(S.cotiza || {})[id] || {} }))
     .sort((a, b) => (+a.id.slice(1) || 0) - (+b.id.slice(1) || 0))
   return (Object.keys(guz.precios).length ? [guz] : []).concat(mios)
 }
@@ -1348,7 +1350,8 @@ function vistaCandidatos () {
     const t = totalCandidato(c)
     const dif = (tRef && !c.ref && t) ? Math.round((t / tRef - 1) * 100) : null
     return `<tr><td><a href="#" data-cand="${c.id}">${c.nombre}</a>${
-      c.ref ? '<br><span class="nada">la vara, no se edita</span>' : ''}</td>
+      c.ref ? '<br><span class="nada">la vara, no se edita</span>'
+            : (c.mat ? '' : '<br><span class="nada">sólo mano de obra</span>')}</td>
       <td>${t ? nPesos(t) : '<span class="nada">sin cotizar</span>'}${
         dif === null ? '' : `<br><span class="${dif < 0 ? 'barato' : 'nada'}">${
         dif > 0 ? '+' : ''}${dif}% vs. Guzmán</span>`}</td></tr>`
@@ -1390,13 +1393,15 @@ function vistaComparar (cs, rubros) {
       <h2>Rubro por rubro</h2>
       <table class="comparar">
         <tr><th>Rubro</th>${conPrecio.map(c => { const n = c.nombre.split(' ')[0]
-          return `<th>${n.length > 9 ? n.slice(0, 8) + '.' : n}</th>` }).join('')}</tr>
+          return `<th>${n.length > 9 ? n.slice(0, 8) + '.' : n}${
+            c.mat ? '' : '<br>sólo obra'}</th>` }).join('')}</tr>
         ${filas}
         <tr class="total"><td>Total</td>${totales.map((t, i) =>
           `<td${t && t === menor ? ' class="barato"' : ''}>${nMiles(t)}</td>`).join('')}</tr>
       </table>
       <p class="guia">Pesos por unidad de cada quien, y abajo el total; en negritas
-      el más barato de cada renglón. Barato por rubro no es barato en total — mira las dos cosas.</p>
+      el más barato de cada renglón. <b>Ojo si una columna dice «sólo obra»</b>:
+      ésa no trae material y no se compara de tú a tú con una que sí. Barato por rubro no es barato en total — mira las dos cosas.</p>
     </div>`
 }
 
@@ -1427,10 +1432,14 @@ function vistaFicha (cid) {
         edita: sirve de vara. Sus precios traen material y mano de obra juntos.</p>`
       : `<label class="campo">Nombre <input data-campo="nombre" value="${c.nombre}"></label>
          <label class="campo">Teléfono <input data-campo="tel" value="${c.tel}"></label>
-         <label class="campo">Nota <input data-campo="nota" value="${c.nota}" placeholder="quién lo recomendó, qué prometió…"></label>`}
+         <label class="campo">Nota <input data-campo="nota" value="${c.nota}" placeholder="quién lo recomendó, qué prometió…"></label>
+         <label class="interruptor" style="margin-top:10px">
+           <input type="checkbox" id="cand-mat"${c.mat ? ' checked' : ''}>
+           Sus precios incluyen el material</label>`}
       <table style="margin-top:10px"><tr class="total"><td>Total</td>
         <td id="cand-total">${nPesos(totalCandidato(c))}</td></tr></table>
-      <p class="guia">Precio por unidad, con material incluido. ${
+      <p class="guia">Precio por unidad, ${c.mat ? 'con material incluido' :
+        '<b>sólo mano de obra</b> — el material lo compras tú'}. ${
         conPlano() ? 'Cantidades del plano.' : 'Cantidades del contrato viejo.'}</p>
     </div>` + bloques + (c.ref ? '' : `
     <div class="tarjeta">
@@ -1451,6 +1460,11 @@ function enganchaCandidatos () {
   n.querySelectorAll('[data-cand]').forEach(a => a.onclick = (ev) => {
     ev.preventDefault(); candActivo = a.dataset.cand; dibujaMas()
   })
+  const mat = document.getElementById('cand-mat')
+  if (mat) mat.onchange = () => {
+    pon('k:' + candActivo, { ...(S.candidatos[candActivo] || {}), mat:mat.checked })
+    dibujaMas()
+  }
   const atras = document.getElementById('cand-atras')
   if (atras) atras.onclick = (ev) => { ev.preventDefault(); candActivo = null; dibujaMas() }
   n.querySelectorAll('[data-borra]').forEach(b => b.onclick = () => {
