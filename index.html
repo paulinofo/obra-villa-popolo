@@ -1190,22 +1190,28 @@ function vistaEstimadoQuien () {
     const e = estimado(c.id)
     return { c, e }
   })
-  const menor = Math.min(...filas.map(f => f.e.total))
+  /* Coronar al más barato sólo tiene sentido si cubren lo mismo. Si uno cotizó
+     ocho rubros y el otro doce, el «más barato» es el que menos hace. */
+  const cubre = (c) => rubrosPorN().filter(x => +c.precios[x.id]).map(x => x.id).sort().join()
+  const mismoAlcance = filas.every(f => cubre(f.c) === cubre(filas[0].c))
+  const menor = mismoAlcance ? Math.min(...filas.map(f => f.e.total)) : null
   const presta = filas.some(f => f.e.soloObra)
+  const cuantos = (c) => rubrosPorN().filter(x => +c.precios[x.id]).length
   return `<table style="margin-top:14px">
       <tr><th>Con quién</th><th>Alcance</th><th>Todo</th></tr>
       ${filas.map(({ c, e }) => `<tr>
-        <td>${c.nombre}${e.soloObra
-          ? `<br><span class="nada">obra ${nMiles(e.alcance - 0)} + material ${nMiles(e.matRef)}</span>`
-          : '<br><span class="nada">con material</span>'}</td>
+        <td>${c.nombre}<br><span class="nada">${e.soloObra
+          ? `obra ${nMiles(e.alcance)} + material ${nMiles(e.matRef)}`
+          : 'con material'} · cotizó ${cuantos(c)} de ${rubrosPorN().length} rubros</span></td>
         <td>${nPesos(e.alcance + e.matRef)}</td>
-        <td${e.total === menor ? ' class="barato"' : ''}>${nPesos(e.total)}</td></tr>`).join('')}
+        <td${menor !== null && e.total === menor ? ' class="barato"' : ''}>${nPesos(e.total)}</td></tr>`).join('')}
     </table>
     <p class="guia">${presta ? `Al que cotiza <b>sólo mano de obra</b> se le suma el
       <b>material a precios de Guzmán</b>, y nada más de los rubros que él cotizó:
-      es la única forma de ponerlos lado a lado. ` : ''}Cada quien cotiza rubros
-    distintos, así que el más barato de abajo puede ser el que menos abarca —
-    míralo junto a Rubro por rubro, en Candidatos.</p>`
+      es la única forma de ponerlos lado a lado. ` : ''}${mismoAlcance
+      ? 'Los dos cotizan los mismos rubros, así que el total se compara derecho.'
+      : '<b>No cubren lo mismo</b>, así que ninguno sale coronado: el más barato sería ' +
+        'el que menos hace. Mira quién cotizó qué en Rubro por rubro, en Candidatos.'}</p>`
 }
 
 function vistaEstimado () {
