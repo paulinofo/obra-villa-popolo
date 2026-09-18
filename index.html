@@ -650,11 +650,15 @@ function pinta () {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round'
   const NOMBRE = '600 11.5px -apple-system,system-ui,sans-serif'
   const METROS = '500 10px -apple-system,system-ui,sans-serif'
+  /* Se apunta el lugar que ocupa cada etiqueta: las cotas no se escriben
+     encima de un nombre, que es lo que de verdad hace falta leer. */
+  const etiquetas = []
   const escribe = (txt, x, y, fuente, color) => {
     ctx.font = fuente
     ctx.lineWidth = 3.5; ctx.strokeStyle = 'rgba(255,255,255,.9)'
     ctx.strokeText(txt, x, y)
     ctx.fillStyle = color; ctx.fillText(txt, x, y)
+    etiquetas.push({ mx:x, my:y, ang:0, hw:ctx.measureText(txt).width/2 + 3, hh:8 })
   }
   for (const e of espacios) {
     if (e.nivel !== nivelActivo) continue
@@ -673,7 +677,7 @@ function pinta () {
       escribe(metros, x, y, METROS, puesto ? '#252a31' : '#9aa0a8')
     }
   }
-  dibujaCotas(ctx)
+  return { etiquetas, cotas: dibujaCotas(ctx, etiquetas) }
 }
 
 /* ------------------------------------------------------------------
@@ -699,32 +703,94 @@ function cotasDe (e) {
   return salida
 }
 
-/* Devuelve las que de verdad alcanzó a escribir, no las que quiso. */
-function dibujaCotas (c) {
-  if (!abierto || abierto.nivel !== nivelActivo) return []
-  const puestas = []
+/* El plano va acotado SIEMPRE, se haya tocado un cuarto o no. Tocar uno sólo
+   hace que las suyas resalten. Devuelve las que de verdad alcanzó a escribir,
+   no las que quiso: un muro que en pantalla no da ni para su número se queda
+   sin él, que es lo que evita que el plano alejado sea una mancha. */
+const anchoTexto = new Map()          // measureText corre en cada repintado
+const AIRE = 3                        // píxeles de respiro alrededor de cada número
+const ALTO_COTA = 12                  // lo que ocupa de alto un número de 10 px
+
+/* ¿Se estorban dos números? Cada uno es un rectángulo TORCIDO —corre sobre su
+   muro, y los muros van a 28°—, así que no basta comparar centros: dos cotas
+   paralelas y cercanas chocan aunque sus centros queden lejos. Esto es el
+   teorema del eje separador sobre los cuatro ejes de los dos rectángulos: si
+   en alguno no se traslapan, no se estorban. */
+function chocan (a, b) {
+  const ejes = [[Math.cos(a.ang), Math.sin(a.ang)], [-Math.sin(a.ang), Math.cos(a.ang)],
+                [Math.cos(b.ang), Math.sin(b.ang)], [-Math.sin(b.ang), Math.cos(b.ang)]]
+  const dx = b.mx - a.mx, dy = b.my - a.my
+  const radio = (c, ex, ey) =>
+    c.hw*Math.abs(Math.cos(c.ang)*ex + Math.sin(c.ang)*ey) +
+    c.hh*Math.abs(-Math.sin(c.ang)*ex + Math.cos(c.ang)*ey)
+  for (const [ex, ey] of ejes)
+    if (Math.abs(dx*ex + dy*ey) > radio(a, ex, ey) + radio(b, ex, ey)) return false
+  return true
+}
+
+function dibujaCotas (c, ocupado) {
+  const n = niveles[nivelActivo]; if (!n || !n.listo) return []
+  const r = lienzo.getBoundingClientRect()
   c.save()
   c.textAlign = 'center'; c.textBaseline = 'middle'
   c.font = '600 10px -apple-system,system-ui,sans-serif'
-  for (const s of cotasDe(abierto)) {
-    if (s.m < COTA_MIN) continue
-    const x1 = s.x1*vista.esc + vista.dx, y1 = s.y1*vista.esc + vista.dy
-    const x2 = s.x2*vista.esc + vista.dx, y2 = s.y2*vista.esc + vista.dy
-    const txt = s.m.toFixed(1)
-    const largo = Math.hypot(x2-x1, y2-y1)
-    /* Si el muro en pantalla no da ni para el número, mejor nada que encimado. */
-    if (largo < c.measureText(txt).width + 8) continue
-    /* El texto corre sobre el muro, pero siempre de cabeza para arriba: a 28°
-       y del otro lado del cuarto, si no, se lee al revés. */
-    let ang = Math.atan2(y2-y1, x2-x1)
-    if (ang > Math.PI/2 || ang < -Math.PI/2) ang += Math.PI
+  const ancho = (t) => {
+    if (!anchoTexto.has(t)) anchoTexto.set(t, c.measureText(t).width)
+    return anchoTexto.get(t)
+  }
+
+  /* 1. Las que cabrían. El cuarto abierto va PRIMERO porque en el reparto de
+        lugares gana el que estás viendo. */
+  const suyos = [], ajenos = []
+  for (const e of espacios) {
+    if (e.nivel !== nivelActivo) continue
+    const suyo = !!abierto && abierto.nivel === e.nivel && abierto.nombre === e.nombre
+    for (const s of cotasDe(e)) {
+      if (s.m < COTA_MIN) continue
+      const x1 = s.x1*vista.esc + vista.dx, y1 = s.y1*vista.esc + vista.dy
+      const x2 = s.x2*vista.esc + vista.dx, y2 = s.y2*vista.esc + vista.dy
+      /* Fuera de la pantalla no se mide ni se escribe: son 27 cuartos y esto
+         corre en cada arrastre del plano. */
+      if (Math.max(x1, x2) < -20 || Math.min(x1, x2) > r.width + 20 ||
+          Math.max(y1, y2) < -20 || Math.min(y1, y2) > r.height + 20) continue
+      const txt = nMetros(s.m)
+      if (Math.hypot(x2-x1, y2-y1) < ancho(txt) + 8) continue
+      /* El número se lee siempre de cabeza para arriba: a 28° y del otro lado
+         del cuarto, si no, se lee al revés. Se endereza aquí para que la caja
+         con la que se mide el choque sea la misma que se dibuja. */
+      let ang = Math.atan2(y2-y1, x2-x1)
+      /* Media vuelta, del lado que toque: sumar siempre π dibuja igual (es lo
+         mismo módulo 2π) pero deja ángulos de 6.14 rad, y entonces el ángulo
+         que devuelve la función miente sobre cómo quedó el número. */
+      if (ang > Math.PI/2) ang -= Math.PI
+      else if (ang < -Math.PI/2) ang += Math.PI
+      ;(suyo ? suyos : ajenos).push({ ...s, e, suyo, txt, ang,
+        mx:(x1+x2)/2, my:(y1+y2)/2,
+        hw:(ancho(txt) + AIRE)/2, hh:(ALTO_COTA + AIRE)/2 })
+    }
+  }
+
+  /* 2. El reparto. Un muro entre dos cuartos lo rotulaban LOS DOS, cada uno
+        con su medida y una encima de la otra; y dos muros cercanos se
+        estorban igual. Se queda el primero que llegue y los demás se callan:
+        más vale un número menos que dos ilegibles. */
+  const puestas = [], tomado = (ocupado || []).slice()
+  for (const s of suyos.concat(ajenos)) {
+    if (tomado.some(q => chocan(q, s))) continue
+    puestas.push(s); tomado.push(s)
+  }
+
+  /* 3. A escribirlas. */
+  for (const s of puestas) {
     c.save()
-    c.translate((x1+x2)/2, (y1+y2)/2); c.rotate(ang)
+    c.translate(s.mx, s.my); c.rotate(s.ang)
     c.lineWidth = 3.5; c.strokeStyle = 'rgba(255,255,255,.95)'
-    c.strokeText(txt, 0, 0)
-    c.fillStyle = '#7a4a1e'; c.fillText(txt, 0, 0)
+    c.strokeText(s.txt, 0, 0)
+    /* El cuarto que tienes abierto va en el color de la app; los demás, en
+       gris, para que el plano acotado no compita con lo que estás viendo. */
+    c.fillStyle = s.suyo ? '#7a4a1e' : 'rgba(96,102,110,.82)'
+    c.fillText(s.txt, 0, 0)
     c.restore()
-    puestas.push(s)
   }
   c.restore()
   return puestas
