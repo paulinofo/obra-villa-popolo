@@ -23,7 +23,10 @@
   .estado{font-size:12px}
   .estado.vivo{color:#2f7d4f}
   .estado.malo{color:#b0713a}
-  .gasto{display:flex;gap:10px;align-items:baseline;padding:8px 0;border-top:1px solid var(--linea)}
+  .gasto{display:flex;gap:10px;align-items:baseline;padding:8px 0;border-top:1px solid var(--linea);
+         cursor:pointer;margin:0 -6px;padding-left:6px;padding-right:6px;border-radius:8px}
+  /* El que se está corrigiendo se queda marcado mientras lo editas abajo. */
+  .gasto.editando{background:var(--acento-claro);box-shadow:inset 0 0 0 1px var(--acento)}
   .gasto .dia{font-size:11px;color:var(--suave);width:46px;flex:0 0 auto}
   .gasto .qué{flex:1}
   .gasto .quien{font-size:11.5px;color:var(--suave)}
@@ -132,6 +135,7 @@
   .btn{display:block;width:100%;padding:11px;border:1px solid var(--linea);border-radius:11px;
        background:var(--papel);font:inherit;font-size:14px;color:var(--tinta);cursor:pointer}
   .btn.fuerte{background:var(--tinta);color:#fff;border-color:var(--tinta)}
+  .btn.malo{color:#a3342b;border-color:#e6c4bf}
 
   /* ---- ficha del espacio ---- */
   #velo{position:fixed;inset:0;background:rgba(20,22,26,.34);opacity:0;pointer-events:none;
@@ -1040,7 +1044,24 @@ const pagadores = () => S.cfg.pagadores || ['Denise', 'Dorila']
 const hoyISO = () => new Date().toISOString().slice(0, 10)
 const nuevoId = (pre) => pre + Date.now().toString(36) + Math.floor(Math.random()*1296).toString(36).padStart(2,'0')
 
+/* El gasto que se está corrigiendo; null cuando el formulario es para uno nuevo. */
+let editando = null
+const CAMPOS_GASTO = ['g-tipo', 'g-fecha', 'g-concepto', 'g-monto', 'g-quien', 'g-prov']
+/* Un concepto con comillas —cemento «gris»— rompería el value="" del campo. */
+const atr = (t) => String(t == null ? '' : t)
+  .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
 function dibujaGastos () {
+  const cont = document.getElementById('gastos')
+  /* La lista y el formulario viven en nodos APARTE, y no es cosmético:
+     `sincroniza()` redibuja la pestaña activa cada 20 segundos (cada 4 si hay
+     cola por subir), y mientras el formulario estuvo adentro cada sincronizada
+     se llevaba lo que ibas tecleando. Ahora sólo se rehace la lista. */
+  if (!cont.querySelector('#g-lista'))
+    cont.innerHTML = '<div id="g-lista"></div><div id="g-forma"></div>'
+  /* Si el otro teléfono borró el gasto que tenías abierto, ya no hay qué editar. */
+  if (editando && !S.gastos[editando]) editando = null
+
   const lista = Object.entries(S.gastos).map(([id, g]) => ({ id, ...g }))
     .filter(g => g && !g.borrado).sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''))
   const suma = (f) => lista.filter(f).reduce((a, g) => a + (+g.monto || 0), 0)
@@ -1049,7 +1070,7 @@ function dibujaGastos () {
   for (const g of lista) porQuien[g.quien || 'Sin asignar'] = (porQuien[g.quien || 'Sin asignar'] || 0) + (+g.monto || 0)
   const sinAsignar = lista.filter(g => !g.quien).length
 
-  document.getElementById('gastos').innerHTML = `
+  cont.querySelector('#g-lista').innerHTML = `
     <div class="tarjeta">
       <h2>Lo que va gastado</h2>
       <table>
@@ -1070,7 +1091,9 @@ function dibujaGastos () {
 
     <div class="tarjeta">
       <h2>Movimientos · ${lista.length}</h2>
-      ${lista.map(g => `<div class="gasto">
+      ${lista.length ? '<p class="guia" style="margin:0 0 6px">Toca un movimiento para corregirlo.</p>' : ''}
+      ${lista.map(g => `<div class="gasto${g.id === editando ? ' editando' : ''}"
+             data-editar="${g.id}" role="button" tabindex="0">
           <span class="dia">${nDia(g.fecha)}</span>
           <span class="qué">${g.concepto || ''}<br>
             <span class="quien">${g.tipo === 'pago' ? 'Mano de obra' : 'Material'}${
@@ -1084,29 +1107,11 @@ function dibujaGastos () {
               </select></span></span>
           <span class="monto">${nPesos(g.monto)}</span>
         </div>`).join('') || '<p class="guia">Nada todavía. Agrega el primero abajo.</p>'}
-    </div>
-
-    <div class="tarjeta">
-      <h2>Agregar gasto</h2>
-      <div class="dosCampos">
-        <label class="campo">Qué es
-          <select id="g-tipo"><option value="compra">Material</option><option value="pago">Mano de obra</option></select></label>
-        <label class="campo">Cuándo <input id="g-fecha" type="date" value="${hoyISO()}"></label>
-      </div>
-      <label class="campo">Concepto <input id="g-concepto" placeholder="Cemento, 50 bultos"></label>
-      <div class="dosCampos">
-        <label class="campo">Monto <input id="g-monto" inputmode="numeric" placeholder="0"></label>
-        <label class="campo">Quién lo puso
-          <select id="g-quien"><option value="">—</option>${
-            pagadores().map(q => `<option>${q}</option>`).join('')}</select></label>
-      </div>
-      <label class="campo">Proveedor <input id="g-prov" placeholder="opcional"></label>
-      <button class="btn fuerte" id="g-guardar" style="margin-top:12px">Guardar el gasto</button>
     </div>`
 
   /* Corregir quién puso el dinero sin volver a capturar el gasto: los cuatro
      que vinieron de la app de obra llegaron sin dueño. */
-  document.getElementById('gastos').querySelectorAll('[data-quien]').forEach(sel => {
+  cont.querySelectorAll('[data-quien]').forEach(sel => {
     sel.onchange = () => {
       const id = sel.dataset.quien
       pon('g:' + id, { ...S.gastos[id], quien: sel.value })
@@ -1114,18 +1119,92 @@ function dibujaGastos () {
     }
   })
 
+  /* Tocar el movimiento lo abre abajo para corregirlo. El menú de quién puso
+     es suyo y no cuenta como tocar el renglón. */
+  cont.querySelector('#g-lista').onclick = ev => {
+    if (ev.target.closest('[data-quien]')) return
+    const fila = ev.target.closest('[data-editar]'); if (!fila) return
+    editando = fila.dataset.editar
+    dibujaGastos()
+    const f = document.getElementById('g-forma')
+    if (f.scrollIntoView) f.scrollIntoView({ behavior:'smooth', block:'nearest' })
+  }
+
+  /* El formulario se rehace SÓLO cuando hace falta: si no hay ninguno, si
+     cambió el gasto al que apunta, o si cambió la lista de quién puede pagar
+     —y eso último conservando lo tecleado—. */
+  const forma = cont.querySelector('#g-forma')
+  if (!forma.firstElementChild || forma.dataset.gasto !== (editando || '')) dibujaForma()
+  else if (forma.dataset.pagadores !== pagadores().join('·')) dibujaForma(true)
+}
+
+function dibujaForma (conserva) {
+  const forma = document.getElementById('g-forma')
+  const llevaba = conserva
+    ? Object.fromEntries(CAMPOS_GASTO.map(id => [id, (document.getElementById(id) || {}).value || ''])) : null
+  const g = editando ? S.gastos[editando] : null
+  const quienes = [...new Set([...pagadores(), ...(g && g.quien ? [g.quien] : [])])]
+  forma.dataset.gasto = editando || ''
+  forma.dataset.pagadores = pagadores().join('·')
+  forma.innerHTML = `
+    <div class="tarjeta">
+      <h2>${g ? 'Editar gasto' : 'Agregar gasto'}</h2>
+      <div class="dosCampos">
+        <label class="campo">Qué es
+          <select id="g-tipo">
+            <option value="compra"${g && g.tipo === 'compra' ? ' selected' : ''}>Material</option>
+            <option value="pago"${g && g.tipo === 'pago' ? ' selected' : ''}>Mano de obra</option></select></label>
+        <label class="campo">Cuándo <input id="g-fecha" type="date" value="${atr((g && g.fecha) || hoyISO())}"></label>
+      </div>
+      <label class="campo">Concepto
+        <input id="g-concepto" placeholder="Cemento, 50 bultos" value="${atr(g && g.concepto)}"></label>
+      <div class="dosCampos">
+        <label class="campo">Monto
+          <input id="g-monto" inputmode="numeric" placeholder="0" value="${g && g.monto ? atr(g.monto) : ''}"></label>
+        <label class="campo">Quién lo puso
+          <select id="g-quien"><option value="">—</option>${
+            quienes.map(q => `<option${g && q === g.quien ? ' selected' : ''}>${q}</option>`).join('')}</select></label>
+      </div>
+      <label class="campo">Proveedor
+        <input id="g-prov" placeholder="opcional" value="${atr(g && g.proveedor)}"></label>
+      <button class="btn fuerte" id="g-guardar" style="margin-top:12px">${
+        g ? 'Guardar los cambios' : 'Guardar el gasto'}</button>
+      ${g ? `<button class="btn" id="g-cancelar" style="margin-top:8px">Cancelar</button>
+             <button class="btn malo" id="g-borrar" style="margin-top:8px">Borrar el gasto</button>` : ''}`
+    + '</div>'
+  if (llevaba) for (const id in llevaba) {
+    const n = document.getElementById(id); if (n && llevaba[id]) n.value = llevaba[id]
+  }
+
   document.getElementById('g-guardar').onclick = () => {
     const monto = +document.getElementById('g-monto').value || 0
     const concepto = document.getElementById('g-concepto').value.trim()
     if (!monto || !concepto) { alert('Falta el concepto o el monto.'); return }
-    pon('g:' + nuevoId('g'), {
+    /* Al corregir se escribe la MISMA llave: el hecho se pisa con sello nuevo
+       y en el teléfono de Denise el gasto se corrige en vez de duplicarse.
+       Lo de antes se conserva por si trae campos que el formulario no enseña
+       (la nota del ticket, por ejemplo). */
+    const id = editando || nuevoId('g')
+    pon('g:' + id, { ...(S.gastos[id] || {}),
       tipo: document.getElementById('g-tipo').value,
       fecha: document.getElementById('g-fecha').value || hoyISO(),
       concepto, monto,
       quien: document.getElementById('g-quien').value,
       proveedor: document.getElementById('g-prov').value.trim(),
     })
-    dibujaGastos()
+    editando = null; dibujaForma(); dibujaGastos()
+  }
+
+  const cancelar = document.getElementById('g-cancelar')
+  if (cancelar) cancelar.onclick = () => { editando = null; dibujaForma(); dibujaGastos() }
+
+  const borrar = document.getElementById('g-borrar')
+  if (borrar) borrar.onclick = () => {
+    const viejo = S.gastos[editando]; if (!viejo) return
+    if (!confirm(`¿Borrar «${viejo.concepto || 'este gasto'}» de ${nPesos(viejo.monto)}?`)) return
+    /* Lápida, no borrón: así el otro teléfono también lo da de baja. */
+    pon('g:' + editando, { ...viejo, borrado: true })
+    editando = null; dibujaForma(); dibujaGastos()
   }
 }
 
@@ -1641,13 +1720,34 @@ function pintaEstado () {
   n.className = 'estado' + (sync.estado === 'en vivo' ? ' vivo' : sync.estado === 'sin señal' ? ' malo' : '')
 }
 
+/* Nadie redibuja encima del que está tecleando. El sync entra cada 20 segundos
+   y la pantalla se rehace con innerHTML: si el cursor está en un campo de esa
+   vista —el monto de un gasto, el precio por m² de un candidato— lo escrito se
+   volatiliza. Se apunta la vista y se redibuja en cuanto suelte el campo. */
+let porRedibujar = null
+const tecleando = (n) => {
+  const a = document.activeElement
+  return !!a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName) && n.contains(a)
+}
+addEventListener('focusout', () => {
+  /* focusout llega ANTES de que el foco aterrice en el campo siguiente, así que
+     se pregunta un instante después; si sólo cambió de campo, no se redibuja. */
+  setTimeout(() => {
+    const v = porRedibujar; if (!v) return
+    const n = document.getElementById(v)
+    if (n && n.classList.contains('activa') && !tecleando(n)) { porRedibujar = null; refrescaTodo() }
+  }, 0)
+})
+
 function refrescaTodo () {
   if (typeof niveles === 'undefined') return
   for (const tag of ['pb', 'n1']) if (niveles[tag] && niveles[tag].listo) tinta(tag)
   if (niveles[nivelActivo] && niveles[nivelActivo].listo) pinta()
   for (const [v, f] of [['resumen', dibujaResumen], ['gastos', dibujaGastos], ['mas', dibujaMas]]) {
     const n = document.getElementById(v)
-    if (n && n.classList.contains('activa')) f()
+    if (!n || !n.classList.contains('activa')) continue
+    if (tecleando(n)) { porRedibujar = v; continue }
+    f()
   }
   pintaEstado()
 }
