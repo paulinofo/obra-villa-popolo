@@ -5,7 +5,7 @@
    El nombre de la caché lleva el sello del armado: al cambiar, el teléfono
    tira la copia vieja. Sin eso, un teléfono que ya tenía la app de obra
    seguiría abriendo ésa desde su caché, para siempre. */
-const CACHE = 'villa-popolo-20260918-1458'
+const CACHE = 'villa-popolo-20261014-1922'
 const PORTADA = './'
 
 self.addEventListener('install', (e) => e.waitUntil((async () => {
