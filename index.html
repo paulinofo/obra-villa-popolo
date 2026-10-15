@@ -39,6 +39,13 @@
             background-size:4px 4px,4px 4px;background-repeat:no-repeat}
   .quienSel.pendiente{font-weight:600}
   .gasto .monto{font-variant-numeric:tabular-nums;font-weight:600}
+  /* «Quién ha desembolsado»: el nombre se toca y abre su desglose debajo. */
+  .quienFila{cursor:pointer}
+  .quienFila td:first-child{color:var(--acento)}
+  .quienFila.abierto td{font-weight:600}
+  .desglose{padding:2px 0 6px 10px;border-left:2px solid var(--acento-claro)}
+  .desglose .gasto{padding-top:6px;padding-bottom:6px}
+  .desglose .subtotal{margin-top:4px;font-size:12.5px;color:var(--suave)}
   .campo{display:block;margin:9px 0 0;font-size:12.5px;color:var(--suave)}
   .campo input,.campo select{width:100%;margin-top:4px;padding:9px 10px;border:1px solid var(--linea);
     border-radius:9px;font:inherit;font-size:14px;background:var(--fondo);color:var(--tinta)}
@@ -1180,6 +1187,9 @@ const nuevoId = (pre) => pre + Date.now().toString(36) + Math.floor(Math.random(
 
 /* El gasto que se está corrigiendo; null cuando el formulario es para uno nuevo. */
 let editando = null
+/* La persona cuyo desglose está abierto en «Quién ha desembolsado»; vive
+   fuera del dibujo para que el redibujo del sync no lo cierre. */
+let abiertoQuien = null
 const CAMPOS_GASTO = ['g-tipo', 'g-fecha', 'g-concepto', 'g-monto', 'g-quien', 'g-prov']
 /* Un concepto con comillas —cemento «gris»— rompería el value="" del campo. */
 const atr = (t) => String(t == null ? '' : t)
@@ -1218,8 +1228,12 @@ function dibujaGastos () {
     <div class="tarjeta">
       <h2>Quién ha desembolsado</h2>
       ${Object.keys(porQuien).length
-        ? `<table>${Object.entries(porQuien).sort((a,b)=>b[1]-a[1]).map(([q, v]) =>
-            `<tr><td>${q}</td><td>${nPesos(v)}</td></tr>`).join('')}</table>`
+        ? `<p class="guia" style="margin:0 0 6px">Toca un nombre para ver de qué se compone.</p>
+           <table>${Object.entries(porQuien).sort((a,b)=>b[1]-a[1]).map(([q, v]) =>
+            `<tr class="quienFila${q === abiertoQuien ? ' abierto' : ''}" data-quien-fila="${atr(q)}" role="button" tabindex="0">
+               <td>${q}</td><td>${nPesos(v)}</td></tr>` +
+            (q === abiertoQuien ? `<tr><td colspan="2" style="padding:0">${desgloseQuien(q, lista)}</td></tr>` : '')
+            ).join('')}</table>`
         : '<p class="guia">Todavía no hay gastos capturados.</p>'}
     </div>
 
@@ -1257,6 +1271,12 @@ function dibujaGastos () {
      es suyo y no cuenta como tocar el renglón. */
   cont.querySelector('#g-lista').onclick = ev => {
     if (ev.target.closest('[data-quien]')) return
+    /* Un nombre en «Quién ha desembolsado» abre o cierra su desglose. */
+    const qf = ev.target.closest('[data-quien-fila]')
+    if (qf) {
+      abiertoQuien = qf.dataset.quienFila === abiertoQuien ? null : qf.dataset.quienFila
+      dibujaGastos(); return
+    }
     const fila = ev.target.closest('[data-editar]'); if (!fila) return
     editando = fila.dataset.editar
     dibujaGastos()
@@ -1270,6 +1290,27 @@ function dibujaGastos () {
   const forma = cont.querySelector('#g-forma')
   if (!forma.firstElementChild || forma.dataset.gasto !== (editando || '')) dibujaForma()
   else if (forma.dataset.pagadores !== pagadores().join('·')) dibujaForma(true)
+}
+
+/* De qué se compone lo que puso una persona: sus movimientos y el subtotal
+   de material y de mano de obra. Cada renglón es tocable como en la lista. */
+function desgloseQuien (q, lista) {
+  const suyos = lista.filter(g => (g.quien || 'Sin asignar') === q)
+  const sub = t => suyos.filter(g => g.tipo === t).reduce((a, g) => a + (+g.monto || 0), 0)
+  return `<div class="desglose" data-quien-desglose="${atr(q)}">
+      ${suyos.map(g => `<div class="gasto${g.id === editando ? ' editando' : ''}"
+             data-editar="${g.id}" role="button" tabindex="0">
+          <span class="dia">${nDia(g.fecha)}</span>
+          <span class="qué">${g.concepto || ''}<br>
+            <span class="quien">${g.tipo === 'pago' ? 'Mano de obra' : 'Material'}${
+              g.proveedor ? ' · ' + g.proveedor : ''}</span></span>
+          <span class="monto">${nPesos(g.monto)}</span>
+        </div>`).join('')}
+      <table class="subtotal">
+        <tr><td>Material</td><td>${nPesos(sub('compra'))}</td></tr>
+        <tr><td>Mano de obra</td><td>${nPesos(sub('pago'))}</td></tr>
+      </table>
+    </div>`
 }
 
 function dibujaForma (conserva) {
